@@ -72,12 +72,30 @@
             margin-top: 10px;
             text-align: center;
         }
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 10px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>User Login</h2>
-        <form id="loginForm">
+        <form id="loginForm" action="/api/users/login" method="POST">
             <div class="form-group">
                 <label for="email">Email</label>
                 <input type="email" id="email" name="email" required>
@@ -86,8 +104,12 @@
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password" required>
             </div>
-            <button type="submit">Login</button>
+            <button type="submit" id="submitBtn">Login</button>
             <div id="error" class="error"></div>
+            <div id="loading" class="loading">
+                <div class="loading-spinner"></div>
+                <p>Redirecting to OTP page...</p>
+            </div>
         </form>
     </div>
 
@@ -98,6 +120,14 @@
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const errorDiv = document.getElementById('error');
+            const submitBtn = document.getElementById('submitBtn');
+            const loadingDiv = document.getElementById('loading');
+            
+            // Show loading state
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.7';
+            loadingDiv.style.display = 'block';
+            errorDiv.textContent = '';
 
             try {
                 const response = await fetch('/api/users/login', {
@@ -111,10 +141,25 @@
                 if (!response.ok) {
                     const data = await response.json();
                     errorDiv.textContent = data.error || 'Login failed';
+                    // Hide loading state on error
+                    submitBtn.disabled = false;
+                    submitBtn.style.opacity = '1';
+                    loadingDiv.style.display = 'none';
+                } else {
+                    // Get the HTML response
+                    const html = await response.text();
+                    
+                    // Replace the current page content with the loading page
+                    document.open();
+                    document.write(html);
+                    document.close();
                 }
-                // If successful, the server will redirect to loading page
             } catch (error) {
                 errorDiv.textContent = 'Network error occurred';
+                // Hide loading state on error
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '1';
+                loadingDiv.style.display = 'none';
             }
         });
     </script>
