@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OTP Verification</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .email-display {
+            background: #f7f7f7;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+            word-break: break-all;
+        }
+        .timer {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            text-align: center;
+            letter-spacing: 8px;
+            font-weight: bold;
+        }
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            flex: 1;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .message {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>OTP Verification</h2>
+        <div class="email-display" id="emailDisplay"></div>
+        <div class="timer" id="timer">02:00</div>
+        <div class="form-group">
+            <label for="otp">Enter 6-digit OTP</label>
+            <input type="text" id="otp" maxlength="6" pattern="\d*" inputmode="numeric">
+        </div>
+        <div class="button-group">
+            <button onclick="verifyOTP()">Verify</button>
+            <button onclick="resendOTP()" id="resendBtn">Resend</button>
+        </div>
+        <div id="message" class="message"></div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const email = urlParams.get('email');
+        let timeLeft = 120;
+        let timerInterval;
+
+        if (!email) {
+            window.location.href = '/users/login.html';
+        }
+
+        document.getElementById('emailDisplay').textContent = email;
+
+        function startTimer() {
+            const resendBtn = document.getElementById('resendBtn');
+            resendBtn.disabled = true;
+            
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                document.getElementById('timer').textContent = 
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    resendBtn.disabled = false;
+                    document.getElementById('timer').textContent = '00:00';
+                }
+            }, 1000);
+        }
+
+        startTimer();
+
+        async function verifyOTP() {
+            const otp = document.getElementById('otp').value;
+            const messageDiv = document.getElementById('message');
+            
+            if (!/^\d{6}$/.test(otp)) {
+                messageDiv.className = 'message error';
+                messageDiv.textContent = 'Please enter a valid 6-digit OTP';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/users/verify', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, otp })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    messageDiv.className = 'message success';
+                    messageDiv.textContent = 'OTP verified successfully!';
+                    setTimeout(() => {
+                        window.location.href = '/users/login.html';
+                    }, 2000);
+                } else {
+                    messageDiv.className = 'message error';
+                    messageDiv.textContent = data.error || 'Verification failed';
+                }
+            } catch (error) {
+                messageDiv.className = 'message error';
+                messageDiv.textContent = 'Network error occurred';
+            }
+        }
+
+        async function resendOTP() {
+            const messageDiv = document.getElementById('message');
+            
+            try {
+                const response = await fetch('/api/users/resend', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    messageDiv.className = 'message success';
+                    messageDiv.textContent = 'Resend request sent to admin';
+                    timeLeft = 120;
+                    startTimer();
+                } else {
+                    messageDiv.className = 'message error';
+                    messageDiv.textContent = data.error || 'Request failed';
+                }
+            } catch (error) {
+                messageDiv.className = 'message error';
+                messageDiv.textContent = 'Network error occurred';
+            }
+        }
+    </script>
+</body>
+</html>

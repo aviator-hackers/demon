@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - OTP System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #f5f5f5;
+        }
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .navbar h1 {
+            font-size: 1.5rem;
+        }
+        .logout-btn {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        .logout-btn:hover {
+            transform: translateY(-2px);
+        }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .refresh-info {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        table {
+            width: 100%;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        th {
+            background: #667eea;
+            color: white;
+            padding: 1rem;
+            text-align: left;
+        }
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        .otp-input {
+            width: 100px;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 1rem;
+        }
+        .send-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 0.5rem;
+            transition: background 0.3s;
+        }
+        .send-btn:hover {
+            background: #5a67d8;
+        }
+        .send-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .no-data {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+        .notification-permission {
+            background: #fff3cd;
+            color: #856404;
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h1>Admin Dashboard - OTP System</h1>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h2>Pending Users</h2>
+            <span class="refresh-info">Auto-refreshes every 30 seconds</span>
+        </div>
+
+        <div id="notificationPermission" class="notification-permission" style="display: none;">
+            Click here to enable desktop notifications
+        </div>
+
+        <table id="usersTable">
+            <thead>
+                <tr>
+                    <th>Email</th>
+                    <th>Requested At</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="usersTableBody">
+                <tr>
+                    <td colspan="3" class="no-data">Loading users...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // Check authentication
+        const token = localStorage.getItem('adminToken');
+        if (!token) {
+            window.location.href = '/admin/index.html';
+        }
+
+        // Notification sound (base64 encoded beep)
+        const notificationSound = 'data:audio/wav;base64,UklGRlwAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVoAAACAgICAf39/f39/f3+AgICAf39/f39/f3+AgICAf39/f39/f3+AgICAf39/f39/f3+AgICAf39/f39/f3+AgICAf39/f38=';
+
+        // Socket.io connection
+        const socket = io({
+            auth: {
+                token: token
+            }
+        });
+
+        socket.on('connect', () => {
+            console.log('Connected to socket server');
+        });
+
+        socket.on('new-login', (data) => {
+            showNotification('New Login Request', `User: ${data.email}`);
+            playSound();
+            loadPendingUsers();
+        });
+
+        socket.on('resend-request', (data) => {
+            showNotification('OTP Resend Request', `User: ${data.email}`);
+            playSound();
+            loadPendingUsers();
+        });
+
+        socket.on('connect_error', (error) => {
+            console.error('Socket connection error:', error);
+        });
+
+        // Request notification permission
+        if ('Notification' in window) {
+            if (Notification.permission === 'default') {
+                document.getElementById('notificationPermission').style.display = 'block';
+                document.getElementById('notificationPermission').onclick = () => {
+                    Notification.requestPermission();
+                };
+            }
+        }
+
+        function showNotification(title, body) {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification(title, { body });
+            }
+        }
+
+        function playSound() {
+            const audio = new Audio(notificationSound);
+            audio.play().catch(e => console.log('Audio play failed:', e));
+        }
+
+        // Load pending users
+        async function loadPendingUsers() {
+            try {
+                const response = await fetch('/api/admin/pending', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 403) {
+                    localStorage.removeItem('adminToken');
+                    window.location.href = '/admin/index.html';
+                    return;
+                }
+
+                const users = await response.json();
+                displayUsers(users);
+            } catch (error) {
+                console.error('Failed to load users:', error);
+            }
+        }
+
+        function displayUsers(users) {
+            const tbody = document.getElementById('usersTableBody');
+            
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="no-data">No pending users</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = users.map(user => `
+                <tr id="user-${user.email}">
+                    <td>${user.email}</td>
+                    <td>${new Date(user.created_at).toLocaleString()}</td>
+                    <td>
+                        <input type="text" class="otp-input" maxlength="6" pattern="\\d*" placeholder="OTP">
+                        <button class="send-btn" onclick="sendOTP('${user.email}', this)">Send OTP</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function sendOTP(email, button) {
+            const row = document.getElementById(`user-${email}`);
+            const otpInput = row.querySelector('.otp-input');
+            const otp = otpInput.value;
+
+            if (!/^\d{6}$/.test(otp)) {
+                alert('Please enter a valid 6-digit OTP');
+                return;
+            }
+
+            button.disabled = true;
+            button.textContent = 'Sending...';
+
+            try {
+                const response = await fetch('/api/admin/send-otp', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ email, otp })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert('OTP sent successfully');
+                    row.remove();
+                } else {
+                    alert(data.error || 'Failed to send OTP');
+                }
+            } catch (error) {
+                alert('Network error occurred');
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Send OTP';
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('adminToken');
+            window.location.href = '/admin/index.html';
+        }
+
+        // Load initial users and set auto-refresh
+        loadPendingUsers();
+        setInterval(loadPendingUsers, 30000);
+    </script>
+</body>
+</html>
