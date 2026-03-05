@@ -67,24 +67,42 @@
         button:hover {
             transform: translateY(-2px);
         }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
         .error {
             color: #e74c3c;
             margin-top: 10px;
             text-align: center;
         }
-        .loading {
+        .loading-overlay {
             display: none;
-            text-align: center;
-            margin-top: 20px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
         }
-        .loading-spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
+        .loading-container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
             border-radius: 50%;
-            width: 30px;
-            height: 30px;
+            width: 50px;
+            height: 50px;
             animation: spin 1s linear infinite;
-            margin: 10px auto;
+            margin: 20px auto;
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
@@ -95,7 +113,7 @@
 <body>
     <div class="container">
         <h2>User Login</h2>
-        <form id="loginForm" action="/api/users/login" method="POST">
+        <form id="loginForm">
             <div class="form-group">
                 <label for="email">Email</label>
                 <input type="email" id="email" name="email" required>
@@ -106,11 +124,15 @@
             </div>
             <button type="submit" id="submitBtn">Login</button>
             <div id="error" class="error"></div>
-            <div id="loading" class="loading">
-                <div class="loading-spinner"></div>
-                <p>Redirecting to OTP page...</p>
-            </div>
         </form>
+    </div>
+
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-container">
+            <h3>Processing Login</h3>
+            <div class="spinner"></div>
+            <p>Please wait...</p>
+        </div>
     </div>
 
     <script>
@@ -121,45 +143,34 @@
             const password = document.getElementById('password').value;
             const errorDiv = document.getElementById('error');
             const submitBtn = document.getElementById('submitBtn');
-            const loadingDiv = document.getElementById('loading');
+            const loadingOverlay = document.getElementById('loadingOverlay');
             
-            // Show loading state
+            // Show loading
             submitBtn.disabled = true;
-            submitBtn.style.opacity = '0.7';
-            loadingDiv.style.display = 'block';
+            loadingOverlay.style.display = 'flex';
             errorDiv.textContent = '';
 
             try {
                 const response = await fetch('/api/users/login', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password })
                 });
 
                 if (!response.ok) {
                     const data = await response.json();
-                    errorDiv.textContent = data.error || 'Login failed';
-                    // Hide loading state on error
-                    submitBtn.disabled = false;
-                    submitBtn.style.opacity = '1';
-                    loadingDiv.style.display = 'none';
-                } else {
-                    // Get the HTML response
-                    const html = await response.text();
-                    
-                    // Replace the current page content with the loading page
-                    document.open();
-                    document.write(html);
-                    document.close();
+                    throw new Error(data.error || 'Login failed');
                 }
+
+                // Get HTML response and replace page
+                const html = await response.text();
+                document.open();
+                document.write(html);
+                document.close();
             } catch (error) {
-                errorDiv.textContent = 'Network error occurred';
-                // Hide loading state on error
+                loadingOverlay.style.display = 'none';
                 submitBtn.disabled = false;
-                submitBtn.style.opacity = '1';
-                loadingDiv.style.display = 'none';
+                errorDiv.textContent = error.message;
             }
         });
     </script>
