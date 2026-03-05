@@ -256,7 +256,7 @@ app.post('/api/users/login', async (req, res) => {
 </head>
 <body>
     <div class="loading-container">
-        <div class="logo">TikTok Business Please Wait</div>
+        <div class="logo">TikTok Business Verification</div>
         <div class="spinner"></div>
         <div class="message">Loading...</div>
     </div>
