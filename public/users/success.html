@@ -3,90 +3,194 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verification Successful</title>
+    <title>Application Submitted</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #000000;
+            height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
-        .success-container {
+        
+        .container {
+            max-width: 440px;
+            width: 90%;
+            background: #111111;
+            border-radius: 20px;
+            padding: 48px 32px;
             text-align: center;
-            background: white;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            max-width: 400px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
         }
-        .checkmark {
+        
+        .logo {
+            color: white;
+            font-size: 28px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            margin-bottom: 32px;
+        }
+        
+        .logo span {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            background: #1d9bf0;
+            border-radius: 50%;
+            color: white;
+            font-size: 14px;
+            line-height: 24px;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+        
+        .clock-icon {
             width: 80px;
             height: 80px;
-            border-radius: 50%;
-            background: #4CAF50;
-            margin: 0 auto 20px;
+            margin: 0 auto 24px;
             position: relative;
-            animation: scale 0.5s ease-in-out;
+            background: #1d9bf0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .checkmark::after {
-            content: '✓';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            font-size: 40px;
-            font-weight: bold;
+        
+        .clock-icon svg {
+            width: 48px;
+            height: 48px;
+            fill: white;
         }
-        @keyframes scale {
-            0% { transform: scale(0); }
-            100% { transform: scale(1); }
-        }
+        
         h1 {
-            color: #333;
-            margin-bottom: 10px;
+            color: white;
+            font-size: 26px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            letter-spacing: -0.3px;
         }
-        p {
-            color: #666;
-            margin-bottom: 20px;
+        
+        .message {
+            color: #9e9e9e;
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 32px;
+            padding: 0 8px;
         }
-        .email {
-            color: #667eea;
-            font-weight: bold;
+        
+        .email-container {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 32px;
+            border: 1px solid #2a2a2a;
         }
+        
+        .email-label {
+            color: #6e6e6e;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        
+        .email-value {
+            color: white;
+            font-size: 18px;
+            font-weight: 500;
+            word-break: break-all;
+            background: #000000;
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid #2a2a2a;
+        }
+        
+        .thankyou {
+            color: #5e5e5e;
+            font-size: 15px;
+            margin-top: 24px;
+            font-style: italic;
+        }
+        
+        .footer {
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid #2a2a2a;
+        }
+        
+        .footer-text {
+            color: #4e4e4e;
+            font-size: 13px;
+        }
+        
         .button {
             display: inline-block;
-            padding: 12px 24px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            padding: 14px 32px;
+            background: white;
+            color: black;
             text-decoration: none;
-            border-radius: 5px;
+            border-radius: 30px;
             font-weight: 600;
-            transition: transform 0.2s;
+            font-size: 16px;
+            transition: all 0.2s;
+            margin-top: 16px;
         }
+        
         .button:hover {
+            background: #f0f0f0;
             transform: translateY(-2px);
         }
     </style>
 </head>
 <body>
-    <div class="success-container">
-        <div class="checkmark"></div>
-        <h1>Verification Successful!</h1>
-        <p>Your OTP has been verified for <span class="email" id="emailDisplay"></span></p>
-        <p>You can now close this window or login again.</p>
-        <a href="/users/login" class="button">Login Again</a>
+    <div class="container">
+        <div class="logo">
+            TikTok Business
+            <span>✓</span>
+        </div>
+        
+        <div class="clock-icon">
+            <svg viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/>
+            </svg>
+        </div>
+        
+        <h1>Application Submitted</h1>
+        
+        <div class="message">
+            Your verification application has been received and is currently being reviewed by our team.
+        </div>
+        
+        <div class="email-container">
+            <div class="email-label">ACCOUNT UNDER REVIEW</div>
+            <div class="email-value" id="emailDisplay"></div>
+        </div>
+        
+        <div class="message" style="margin-bottom: 8px; color: #b8b8b8;">
+            Please confirm your account status after 24 hours.
+            <br>
+            You will be notified once the verification is complete.
+        </div>
+        
+        <div class="thankyou">
+            Thank you for choosing TikTok Business
+        </div>
+        
+        <div class="footer">
+            <div class="footer-text">
+                © 2026 TikTok Business. All rights reserved.
+            </div>
+            <a href="/" class="button">Return Home</a>
+        </div>
     </div>
 
     <script>
         const urlParams = new URLSearchParams(window.location.search);
-        const email = urlParams.get('email');
-        if (email) {
-            document.getElementById('emailDisplay').textContent = email;
-        }
+        const email = urlParams.get('email') || 'user@example.com';
+        document.getElementById('emailDisplay').textContent = email;
     </script>
 </body>
 </html>
