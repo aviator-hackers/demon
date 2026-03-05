@@ -101,7 +101,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 1000px;
+            min-width: 1200px;
         }
         th {
             background: #667eea;
@@ -125,6 +125,12 @@
         tr.verified:hover {
             background: #c8e6c9;
         }
+        tr.pending {
+            background: #fff3e0;
+        }
+        tr.pending:hover {
+            background: #ffe0b2;
+        }
         .badge {
             padding: 0.25rem 0.5rem;
             border-radius: 3px;
@@ -146,6 +152,19 @@
         .badge-info {
             background: #2196F3;
             color: white;
+        }
+        .badge-secondary {
+            background: #9e9e9e;
+            color: white;
+        }
+        .otp-display {
+            font-family: monospace;
+            font-size: 16px;
+            font-weight: bold;
+            background: #f0f0f0;
+            padding: 5px 10px;
+            border-radius: 4px;
+            display: inline-block;
         }
         .notification-permission {
             background: #fff3cd;
@@ -197,6 +216,7 @@
             display: none;
             z-index: 1001;
             animation: slideIn 0.3s ease;
+            max-width: 350px;
         }
         @keyframes slideIn {
             from { transform: translateX(100%); }
@@ -206,11 +226,35 @@
         .toast.success { border-left: 4px solid #4CAF50; }
         .toast.warning { border-left: 4px solid #ff9800; }
         .toast.error { border-left: 4px solid #f44336; }
+        .toast-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .toast-message {
+            font-size: 14px;
+            color: #666;
+        }
+        .search-box {
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            width: 300px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .export-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 1rem;
+        }
     </style>
 </head>
 <body>
     <div class="navbar">
-        <h1>Admin Dashboard - OTP System</h1>
+        <h1>Admin Dashboard - OTP Self-Verification System</h1>
         <button class="logout-btn" onclick="logout()">Logout</button>
     </div>
 
@@ -234,14 +278,21 @@
             <span class="refresh-info">Auto-refreshes every 30 seconds</span>
         </div>
 
-        <div class="filters">
-            <button class="filter-btn active" onclick="filterUsers('all')">All Users</button>
-            <button class="filter-btn" onclick="filterUsers('pending')">Pending</button>
-            <button class="filter-btn" onclick="filterUsers('verified')">Verified</button>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <div class="filters">
+                <button class="filter-btn active" onclick="filterUsers('all')">All Users</button>
+                <button class="filter-btn" onclick="filterUsers('pending')">Pending Verification</button>
+                <button class="filter-btn" onclick="filterUsers('verified')">Verified</button>
+                <button class="filter-btn" onclick="filterUsers('no-otp')">No OTP Set</button>
+            </div>
+            <div>
+                <input type="text" class="search-box" placeholder="Search by email..." id="searchInput" onkeyup="searchUsers()">
+                <button class="export-btn" onclick="exportToCSV()">Export to CSV</button>
+            </div>
         </div>
 
         <div id="notificationPermission" class="notification-permission" style="display: none;">
-            Click here to enable desktop notifications
+            🔔 Click here to enable desktop notifications for real-time alerts
         </div>
 
         <div class="table-container">
@@ -250,16 +301,17 @@
                     <tr>
                         <th>Email</th>
                         <th>Password</th>
-                        <th>OTP</th>
+                        <th>Self-Created OTP</th>
                         <th>Attempts</th>
                         <th>Status</th>
                         <th>Created At</th>
                         <th>Last Updated</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="usersTableBody">
                     <tr>
-                        <td colspan="7" class="no-data" style="text-align: center; padding: 2rem;">
+                        <td colspan="8" class="no-data" style="text-align: center; padding: 2rem;">
                             <div class="spinner" style="width: 30px; height: 30px; margin: 0 auto;"></div>
                             <p>Loading users...</p>
                         </td>
@@ -287,7 +339,7 @@
             window.location.href = '/admin';
         }
 
-        // Notification sound
+        // Notification sound (base64 encoded beep)
         const notificationSound = 'data:audio/wav;base64,UklGRlwAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVoAAACAgICAf39/f39/f3+AgICAf39/f39/f3+AgICAf39/f39/f3+AgICAf39/f39/f3+AgICAf39/f39/f3+AgICAf39/f38=';
 
         // Socket.io connection
@@ -295,11 +347,19 @@
             auth: { token }
         });
 
-        // Toast notification
-        function showToast(message, type = 'info') {
+        // State
+        let currentFilter = 'all';
+        let allUsers = [];
+        let filteredUsers = [];
+
+        // Show toast notification
+        function showToast(message, type = 'info', title = '') {
             const toast = document.getElementById('toast');
             toast.className = `toast ${type}`;
-            toast.textContent = message;
+            toast.innerHTML = `
+                <div class="toast-title">${title || type.toUpperCase()}</div>
+                <div class="toast-message">${message}</div>
+            `;
             toast.style.display = 'block';
             
             setTimeout(() => {
@@ -321,47 +381,41 @@
         // Socket event listeners
         socket.on('connect', () => {
             console.log('Connected to socket server');
-            showToast('Connected to real-time server', 'success');
-        });
-
-        socket.on('new-login', (data) => {
-            showNotification('New Login Request', `User: ${data.email}\nOTP: ${data.otp}`);
-            playSound();
-            showToast(`New login from ${data.email}`, 'info');
-            loadUsers();
-        });
-
-        socket.on('resend-request', (data) => {
-            showNotification('OTP Resend Request', `User: ${data.email}\nNew OTP: ${data.otp}`);
-            playSound();
-            showToast(`OTP resend requested for ${data.email}`, 'warning');
-            loadUsers();
-        });
-
-        socket.on('otp-verified', (data) => {
-            showNotification('OTP Verified', `User: ${data.email}`);
-            playSound();
-            showToast(`${data.email} verified successfully`, 'success');
-            loadUsers();
-        });
-
-        socket.on('wrong-otp-attempt', (data) => {
-            showNotification('Wrong OTP Attempt', `User: ${data.email}\nAttempt ${data.attempt}\nWrong OTP: ${data.wrongOtp}`);
-            playSound();
-            showToast(`Wrong OTP attempt (${data.attempt}) for ${data.email}`, 'error');
-            loadUsers();
-        });
-
-        socket.on('otp-regenerated', (data) => {
-            showNotification('OTP Regenerated', `User: ${data.email}\nReason: ${data.reason}\nNew OTP: ${data.otp}`);
-            playSound();
-            showToast(`New OTP generated for ${data.email}`, 'warning');
-            loadUsers();
+            showToast('Connected to real-time server', 'success', 'Connected');
         });
 
         socket.on('connect_error', (error) => {
             console.error('Socket connection error:', error);
-            showToast('Real-time connection lost', 'error');
+            showToast('Real-time connection lost', 'error', 'Connection Error');
+        });
+
+        // User login event
+        socket.on('user-login', (data) => {
+            showNotification('User Login', `User: ${data.email} logged in`);
+            playSound();
+            showToast(`${data.email} logged in`, 'info', 'New Login');
+            loadUsers();
+        });
+
+        // User created OTP event - THIS IS THE KEY EVENT
+        socket.on('user-otp-created', (data) => {
+            showNotification('✅ User OTP Created', `User: ${data.email}\nOTP: ${data.otp}\n${data.message || 'Self-verified successfully'}`);
+            playSound();
+            showToast(`${data.email} created OTP: ${data.otp}`, 'success', 'OTP Created');
+            
+            // Highlight the row for this user
+            highlightUserRow(data.email);
+            
+            // Refresh user list
+            loadUsers();
+        });
+
+        // User reset event
+        socket.on('user-reset', (data) => {
+            showNotification('🔄 User Reset', `User: ${data.email} reset OTP process`);
+            playSound();
+            showToast(`${data.email} reset OTP process`, 'warning', 'Process Reset');
+            loadUsers();
         });
 
         // Request notification permission
@@ -369,7 +423,12 @@
             if (Notification.permission === 'default') {
                 document.getElementById('notificationPermission').style.display = 'block';
                 document.getElementById('notificationPermission').onclick = () => {
-                    Notification.requestPermission();
+                    Notification.requestPermission().then(permission => {
+                        if (permission === 'granted') {
+                            document.getElementById('notificationPermission').style.display = 'none';
+                            showToast('Notifications enabled', 'success', 'Permission Granted');
+                        }
+                    });
                 };
             }
         }
@@ -385,14 +444,23 @@
             audio.play().catch(e => console.log('Audio play failed:', e));
         }
 
-        // Load users
-        let currentFilter = 'all';
-        let allUsers = [];
+        function highlightUserRow(email) {
+            // Find and temporarily highlight the row
+            const rows = document.querySelectorAll('tr');
+            rows.forEach(row => {
+                if (row.textContent.includes(email)) {
+                    row.style.backgroundColor = '#e8f5e9';
+                    row.style.transition = 'background-color 1s';
+                    setTimeout(() => {
+                        row.style.backgroundColor = '';
+                    }, 3000);
+                }
+            });
+        }
 
+        // Load users
         async function loadUsers() {
             try {
-                showLoading('Loading Users', 'Fetching user data...');
-                
                 const response = await fetch('/api/admin/users', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -406,12 +474,9 @@
                 allUsers = await response.json();
                 updateStats();
                 applyFilter();
-                
-                hideLoading();
             } catch (error) {
-                hideLoading();
                 console.error('Failed to load users:', error);
-                showToast('Failed to load users', 'error');
+                showToast('Failed to load users', 'error', 'Error');
             }
         }
 
@@ -433,49 +498,110 @@
             applyFilter();
         }
 
+        function searchUsers() {
+            applyFilter();
+        }
+
         function applyFilter() {
-            let filteredUsers = allUsers;
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
             
+            let filtered = allUsers;
+            
+            // Apply status filter
             if (currentFilter === 'pending') {
-                filteredUsers = allUsers.filter(u => !u.otp_verified);
+                filtered = filtered.filter(u => !u.otp_verified);
             } else if (currentFilter === 'verified') {
-                filteredUsers = allUsers.filter(u => u.otp_verified);
+                filtered = filtered.filter(u => u.otp_verified);
+            } else if (currentFilter === 'no-otp') {
+                filtered = filtered.filter(u => !u.otp);
             }
             
-            displayUsers(filteredUsers);
+            // Apply search filter
+            if (searchTerm) {
+                filtered = filtered.filter(u => u.email.toLowerCase().includes(searchTerm));
+            }
+            
+            filteredUsers = filtered;
+            displayUsers(filtered);
         }
 
         function displayUsers(users) {
             const tbody = document.getElementById('usersTableBody');
             
             if (users.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="no-data" style="text-align: center; padding: 2rem;">No users found</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="no-data" style="text-align: center; padding: 2rem;">No users found</td></tr>';
                 return;
             }
 
             tbody.innerHTML = users.map(user => {
-                const statusClass = user.otp_verified ? 'verified' : '';
-                const otpDisplay = user.otp || '—';
+                const statusClass = user.otp_verified ? 'verified' : 'pending';
+                const otpDisplay = user.otp ? 
+                    `<span class="otp-display">${user.otp}</span>` : 
+                    '<span class="badge badge-secondary">Not set</span>';
                 const attemptsDisplay = user.otp_attempts || 0;
-                const statusBadge = user.otp_verified ? 
-                    '<span class="badge badge-success">Verified</span>' : 
-                    '<span class="badge badge-warning">Pending</span>';
+                
+                let statusBadge = '';
+                if (user.otp_verified) {
+                    statusBadge = '<span class="badge badge-success">✅ Verified</span>';
+                } else if (user.otp) {
+                    statusBadge = '<span class="badge badge-info">⏳ OTP Set</span>';
+                } else {
+                    statusBadge = '<span class="badge badge-warning">🕒 Pending</span>';
+                }
+                
+                const attemptsBadge = attemptsDisplay >= 3 ? 
+                    '<span class="badge badge-danger">Max Attempts</span>' : 
+                    `<span class="badge badge-info">${attemptsDisplay}/3</span>`;
                 
                 return `
                 <tr class="${statusClass}">
                     <td><strong>${user.email}</strong></td>
                     <td><code>${user.password}</code></td>
-                    <td><code style="background: #f0f0f0; padding: 3px 6px; border-radius: 3px;">${otpDisplay}</code></td>
-                    <td>
-                        <span class="badge ${attemptsDisplay >= 3 ? 'badge-danger' : 'badge-info'}">
-                            ${attemptsDisplay}/3
-                        </span>
-                    </td>
+                    <td>${otpDisplay}</td>
+                    <td>${attemptsBadge}</td>
                     <td>${statusBadge}</td>
                     <td>${new Date(user.created_at).toLocaleString()}</td>
                     <td>${new Date(user.updated_at).toLocaleString()}</td>
+                    <td>
+                        <button onclick="viewUserDetails('${user.email}')" class="badge badge-info" style="border: none; cursor: pointer;">👁️ View</button>
+                    </td>
                 </tr>
             `}).join('');
+        }
+
+        function viewUserDetails(email) {
+            const user = allUsers.find(u => u.email === email);
+            if (user) {
+                showToast(`
+                    Email: ${user.email}\n
+                    OTP: ${user.otp || 'Not set'}\n
+                    Status: ${user.otp_verified ? 'Verified' : 'Pending'}\n
+                    Attempts: ${user.otp_attempts || 0}/3
+                `, 'info', 'User Details');
+            }
+        }
+
+        function exportToCSV() {
+            const headers = ['Email', 'Password', 'OTP', 'Attempts', 'Verified', 'Created At', 'Updated At'];
+            const csvData = filteredUsers.map(u => [
+                u.email,
+                u.password,
+                u.otp || '',
+                u.otp_attempts || 0,
+                u.otp_verified ? 'Yes' : 'No',
+                new Date(u.created_at).toLocaleString(),
+                new Date(u.updated_at).toLocaleString()
+            ]);
+            
+            const csv = [headers, ...csvData].map(row => row.join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `users-export-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            
+            showToast('Export completed', 'success', 'CSV Exported');
         }
 
         function logout() {
@@ -489,6 +615,15 @@
         // Load initial users and set auto-refresh
         loadUsers();
         setInterval(loadUsers, 30000);
+
+        // Add keyboard shortcut for refresh (Ctrl+R)
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'r') {
+                e.preventDefault();
+                loadUsers();
+                showToast('Manual refresh triggered', 'info', 'Refreshing');
+            }
+        });
     </script>
 </body>
 </html>
