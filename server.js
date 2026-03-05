@@ -23,102 +23,33 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files with absolute paths - FIXED for Render
-const publicPath = path.join(__dirname, 'public');
-console.log('📁 Serving static files from:', publicPath);
-
-// Check if public directory exists
-if (!fs.existsSync(publicPath)) {
-  console.error('❌ Public directory not found at:', publicPath);
-  console.error('📝 Current directory:', __dirname);
-  console.error('📝 Files in current directory:', fs.readdirSync(__dirname));
-} else {
-  console.log('✅ Public directory found');
-  
-  // List contents for debugging
-  try {
-    const files = fs.readdirSync(publicPath);
-    console.log('📁 Public directory contents:', files);
-    
-    if (fs.existsSync(path.join(publicPath, 'users'))) {
-      console.log('📁 Users directory contents:', fs.readdirSync(path.join(publicPath, 'users')));
-    }
-    if (fs.existsSync(path.join(publicPath, 'admin'))) {
-      console.log('📁 Admin directory contents:', fs.readdirSync(path.join(publicPath, 'admin')));
-    }
-  } catch (e) {
-    console.log('Could not list directories:', e.message);
-  }
-}
-
 // Serve static files
+const publicPath = path.join(__dirname, 'public');
 app.use(express.static(publicPath));
 
 // Explicit routes for HTML pages
-app.get('/', (req, res) => {
-  res.sendFile(path.join(publicPath, 'users/login.html'));
-});
+app.get('/', (req, res) => res.sendFile(path.join(publicPath, 'users/login.html')));
+app.get('/users/login', (req, res) => res.sendFile(path.join(publicPath, 'users/login.html')));
+app.get('/users/otp', (req, res) => res.sendFile(path.join(publicPath, 'users/otp.html')));
+app.get('/users/success', (req, res) => res.sendFile(path.join(publicPath, 'users/success.html')));
+app.get('/admin', (req, res) => res.sendFile(path.join(publicPath, 'admin/index.html')));
+app.get('/admin/dashboard', (req, res) => res.sendFile(path.join(publicPath, 'admin/dashboard.html')));
 
-app.get('/users/login', (req, res) => {
-  res.sendFile(path.join(publicPath, 'users/login.html'));
-});
-
-app.get('/users/login.html', (req, res) => {
-  res.sendFile(path.join(publicPath, 'users/login.html'));
-});
-
-app.get('/users/otp', (req, res) => {
-  res.sendFile(path.join(publicPath, 'users/otp.html'));
-});
-
-app.get('/users/otp.html', (req, res) => {
-  res.sendFile(path.join(publicPath, 'users/otp.html'));
-});
-
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(publicPath, 'admin/index.html'));
-});
-
-app.get('/admin/index', (req, res) => {
-  res.sendFile(path.join(publicPath, 'admin/index.html'));
-});
-
-app.get('/admin/index.html', (req, res) => {
-  res.sendFile(path.join(publicPath, 'admin/index.html'));
-});
-
-app.get('/admin/dashboard', (req, res) => {
-  res.sendFile(path.join(publicPath, 'admin/dashboard.html'));
-});
-
-app.get('/admin/dashboard.html', (req, res) => {
-  res.sendFile(path.join(publicPath, 'admin/dashboard.html'));
-});
-
-// Database configuration - Optimized for Neon
+// Database configuration
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  },
+  ssl: { rejectUnauthorized: false },
   connectionTimeoutMillis: 10000,
   idleTimeoutMillis: 30000,
   max: 20,
-  keepAlive: true,
-  keepAliveInitialDelayMillis: 10000
+  keepAlive: true
 });
 
-pool.on('error', (err) => {
-  console.error('❌ Unexpected database pool error:', err.message);
-});
-
-// Test database connection immediately
+// Test database connection
 pool.connect((err, client, release) => {
-  if (err) {
-    console.error('❌ Error connecting to database:', err.message);
-    console.error('📝 DATABASE_URL is:', process.env.DATABASE_URL ? 'Set ✓' : 'Not set ✗');
-  } else {
-    console.log('✅ Successfully connected to Neon PostgreSQL database');
+  if (err) console.error('❌ Database connection error:', err.message);
+  else {
+    console.log('✅ Connected to Neon PostgreSQL database');
     release();
   }
 });
@@ -126,66 +57,53 @@ pool.connect((err, client, release) => {
 // JWT middleware
 const authenticateJWT = (req, res, next) => {
   const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'No token provided' });
   
-  if (!authHeader) {
-    return res.status(401).json({ error: 'No token provided' });
-  }
-
   const token = authHeader.split(' ')[1];
-  
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ error: 'Invalid or expired token' });
-    }
+    if (err) return res.status(403).json({ error: 'Invalid token' });
     req.user = user;
     next();
   });
 };
 
-// Socket.io authentication middleware
+// Socket.io authentication
 io.use((socket, next) => {
   const token = socket.handshake.auth.token;
+  if (!token) return next(new Error('Authentication error'));
   
-  if (!token) {
-    return next(new Error('Authentication error'));
-  }
-
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) {
-      return next(new Error('Authentication error'));
-    }
+    if (err) return next(new Error('Authentication error'));
     socket.user = user;
     next();
   });
 });
 
-// Socket.io connection handling
+// Socket.io connection
 io.on('connection', (socket) => {
   console.log('👤 Admin connected:', socket.id);
-  
-  socket.on('disconnect', () => {
-    console.log('👤 Admin disconnected:', socket.id);
-  });
+  socket.on('disconnect', () => console.log('👤 Admin disconnected:', socket.id));
 });
 
 // Database initialization
 async function initializeDatabase() {
   try {
-    console.log('📦 Initializing database tables...');
+    console.log('📦 Initializing database...');
     
-    // Create users table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
         otp VARCHAR(6),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        otp_attempts INTEGER DEFAULT 0,
+        otp_verified BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    console.log('✅ Users table created or already exists');
+    console.log('✅ Users table ready');
 
-    // Create admin table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS admin (
         id SERIAL PRIMARY KEY,
@@ -193,36 +111,25 @@ async function initializeDatabase() {
         password VARCHAR(255) NOT NULL
       )
     `);
-    console.log('✅ Admin table created or already exists');
+    console.log('✅ Admin table ready');
 
-    // Check if default admin exists, if not create one
-    const adminExists = await pool.query(
-      'SELECT * FROM admin WHERE email = $1',
-      [process.env.ADMIN_EMAIL]
-    );
-
+    // Create default admin
+    const adminExists = await pool.query('SELECT * FROM admin WHERE email = $1', [process.env.ADMIN_EMAIL]);
     if (adminExists.rows.length === 0) {
-      await pool.query(
-        'INSERT INTO admin (email, password) VALUES ($1, $2)',
-        [process.env.ADMIN_EMAIL, process.env.ADMIN_PASSWORD]
-      );
+      await pool.query('INSERT INTO admin (email, password) VALUES ($1, $2)', 
+        [process.env.ADMIN_EMAIL, process.env.ADMIN_PASSWORD]);
       console.log('✅ Default admin created');
-    } else {
-      console.log('✅ Default admin already exists');
     }
 
-    console.log('✅ Database initialization completed successfully');
     return true;
   } catch (error) {
-    console.error('❌ Database initialization error:', error.message);
+    console.error('❌ Database init error:', error.message);
     return false;
   }
 }
 
-// Generate 6-digit OTP
-const generateOTP = () => {
-  return crypto.randomInt(100000, 999999).toString();
-};
+// Generate OTP
+const generateOTP = () => crypto.randomInt(100000, 999999).toString();
 
 // USER ENDPOINTS
 
@@ -230,22 +137,25 @@ const generateOTP = () => {
 app.post('/api/users/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
-    }
+    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
-    // Save user to database
-    await pool.query(
-      'INSERT INTO users (email, password) VALUES ($1, $2) ON CONFLICT (email) DO UPDATE SET password = EXCLUDED.password',
-      [email, password]
-    );
+    // Save user with initial state
+    await pool.query(`
+      INSERT INTO users (email, password, otp_verified) 
+      VALUES ($1, $2, false) 
+      ON CONFLICT (email) DO UPDATE 
+      SET password = EXCLUDED.password, otp_verified = false, otp_attempts = 0
+    `, [email, password]);
 
-    // Emit socket event for new login
-    io.emit('new-login', { email, timestamp: new Date() });
-    console.log('📢 New login event emitted for:', email);
+    // Generate and save OTP
+    const otp = generateOTP();
+    await pool.query('UPDATE users SET otp = $1 WHERE email = $2', [otp, email]);
 
-    // Serve loading page
+    // Emit to admin
+    io.emit('new-login', { email, otp, timestamp: new Date() });
+    console.log('📢 New login - OTP generated for:', email);
+
+    // Send loading page
     res.send(`
       <!DOCTYPE html>
       <html>
@@ -277,14 +187,8 @@ app.post('/api/users/login', async (req, res) => {
             animation: spin 1s linear infinite;
             margin: 20px auto;
           }
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-          .email {
-            color: #667eea;
-            font-weight: bold;
-          }
+          @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+          .email { color: #667eea; font-weight: bold; }
         </style>
         <meta http-equiv="refresh" content="3;url=/users/otp?email=${encodeURIComponent(email)}">
       </head>
@@ -299,36 +203,114 @@ app.post('/api/users/login', async (req, res) => {
     `);
   } catch (error) {
     console.error('❌ Login error:', error.message);
-    res.status(500).json({ error: 'Server error: ' + error.message });
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Verify OTP
+// Verify OTP with attempt tracking
 app.post('/api/users/verify', async (req, res) => {
   try {
     const { email, otp } = req.body;
+    if (!email || !otp) return res.status(400).json({ error: 'Email and OTP required' });
+
+    // Get user data
+    const user = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (user.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+
+    const userData = user.rows[0];
     
-    if (!email || !otp) {
-      return res.status(400).json({ error: 'Email and OTP are required' });
+    // Check if already verified
+    if (userData.otp_verified) {
+      return res.json({ success: true, message: 'Already verified', redirect: '/users/success' });
     }
 
-    const result = await pool.query(
-      'SELECT * FROM users WHERE email = $1 AND otp = $2',
-      [email, otp]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(400).json({ error: 'Invalid OTP' });
+    // Check attempts
+    if (userData.otp_attempts >= 3) {
+      // Generate new OTP after 3 attempts
+      const newOtp = generateOTP();
+      await pool.query('UPDATE users SET otp = $1, otp_attempts = 0 WHERE email = $2', [newOtp, email]);
+      io.emit('otp-regenerated', { email, otp: newOtp, reason: 'max_attempts', timestamp: new Date() });
+      return res.status(400).json({ 
+        error: 'Maximum attempts reached. New OTP has been generated and sent to admin.',
+        newOtpGenerated: true
+      });
     }
 
-    // Clear OTP after successful verification
-    await pool.query(
-      'UPDATE users SET otp = NULL WHERE email = $1',
-      [email]
-    );
+    // Verify OTP
+    if (userData.otp === otp) {
+      // Correct OTP
+      await pool.query('UPDATE users SET otp_verified = true, otp_attempts = 0 WHERE email = $1', [email]);
+      io.emit('otp-verified', { email, timestamp: new Date() });
+      
+      // Send loading page before success
+      res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Verifying...</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              height: 100vh;
+              margin: 0;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            }
+            .loading-container {
+              text-align: center;
+              background: white;
+              padding: 40px;
+              border-radius: 10px;
+              box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            }
+            .spinner {
+              border: 4px solid #f3f3f3;
+              border-top: 4px solid #4CAF50;
+              border-radius: 50%;
+              width: 50px;
+              height: 50px;
+              animation: spin 1s linear infinite;
+              margin: 20px auto;
+            }
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            .checkmark {
+              color: #4CAF50;
+              font-size: 48px;
+              margin: 10px 0;
+            }
+          </style>
+          <meta http-equiv="refresh" content="3;url=/users/success?email=${encodeURIComponent(email)}">
+        </head>
+        <body>
+          <div class="loading-container">
+            <div class="checkmark">✓</div>
+            <h2>OTP Verified Successfully!</h2>
+            <div class="spinner"></div>
+            <p>Please wait, redirecting...</p>
+          </div>
+        </body>
+        </html>
+      `);
+    } else {
+      // Wrong OTP - increment attempts
+      const newAttempts = (userData.otp_attempts || 0) + 1;
+      await pool.query('UPDATE users SET otp_attempts = $1 WHERE email = $2', [newAttempts, email]);
+      
+      // Notify admin of wrong attempt
+      io.emit('wrong-otp-attempt', { 
+        email, 
+        attempt: newAttempts,
+        wrongOtp: otp,
+        timestamp: new Date() 
+      });
 
-    console.log('✅ OTP verified successfully for:', email);
-    res.json({ success: true, message: 'OTP verified successfully' });
+      res.status(400).json({ 
+        error: `Invalid OTP. Attempt ${newAttempts} of 3`,
+        attempts: newAttempts
+      });
+    }
   } catch (error) {
     console.error('❌ Verify error:', error.message);
     res.status(500).json({ error: 'Server error' });
@@ -339,16 +321,16 @@ app.post('/api/users/verify', async (req, res) => {
 app.post('/api/users/resend', async (req, res) => {
   try {
     const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email required' });
+
+    // Generate new OTP
+    const newOtp = generateOTP();
+    await pool.query('UPDATE users SET otp = $1, otp_attempts = 0 WHERE email = $2', [newOtp, email]);
     
-    if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
-    }
+    io.emit('resend-request', { email, otp: newOtp, timestamp: new Date() });
+    console.log('📢 Resend request - new OTP for:', email);
 
-    // Emit socket event for resend request
-    io.emit('resend-request', { email, timestamp: new Date() });
-    console.log('📢 Resend request event emitted for:', email);
-
-    res.json({ success: true, message: 'Resend request sent to admin' });
+    res.json({ success: true, message: 'New OTP generated and sent to admin' });
   } catch (error) {
     console.error('❌ Resend error:', error.message);
     res.status(500).json({ error: 'Server error' });
@@ -361,27 +343,17 @@ app.post('/api/users/resend', async (req, res) => {
 app.post('/api/admin/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
-    }
+    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
-    const result = await pool.query(
-      'SELECT * FROM admin WHERE email = $1 AND password = $2',
-      [email, password]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
+    const result = await pool.query('SELECT * FROM admin WHERE email = $1 AND password = $2', [email, password]);
+    if (result.rows.length === 0) return res.status(401).json({ error: 'Invalid credentials' });
 
     const token = jwt.sign(
-      { id: result.rows[0].id, email: result.rows[0].email, role: 'admin' },
+      { id: result.rows[0].id, email, role: 'admin' },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
 
-    console.log('✅ Admin logged in:', email);
     res.json({ token });
   } catch (error) {
     console.error('❌ Admin login error:', error.message);
@@ -389,121 +361,110 @@ app.post('/api/admin/login', async (req, res) => {
   }
 });
 
-// Get pending users (users with NULL otp)
-app.get('/api/admin/pending', authenticateJWT, async (req, res) => {
+// Get all users with full details for admin
+app.get('/api/admin/users', authenticateJWT, async (req, res) => {
   try {
-    const result = await pool.query(
-      'SELECT id, email, created_at FROM users WHERE otp IS NULL ORDER BY created_at DESC'
-    );
-    console.log(`📊 Found ${result.rows.length} pending users`);
+    const result = await pool.query(`
+      SELECT 
+        id, 
+        email, 
+        password,
+        otp, 
+        otp_attempts,
+        otp_verified,
+        created_at,
+        updated_at
+      FROM users 
+      ORDER BY created_at DESC
+    `);
+    
+    console.log(`📊 Found ${result.rows.length} users`);
     res.json(result.rows);
   } catch (error) {
-    console.error('❌ Pending users error:', error.message);
+    console.error('❌ Admin users error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Send OTP to user
-app.post('/api/admin/send-otp', authenticateJWT, async (req, res) => {
+// Get single user details
+app.get('/api/admin/users/:email', authenticateJWT, async (req, res) => {
   try {
-    const { email, otp } = req.body;
+    const { email } = req.params;
+    const result = await pool.query(`
+      SELECT 
+        id, 
+        email, 
+        password,
+        otp, 
+        otp_attempts,
+        otp_verified,
+        created_at,
+        updated_at
+      FROM users 
+      WHERE email = $1
+    `, [email]);
     
-    if (!email || !otp) {
-      return res.status(400).json({ error: 'Email and OTP are required' });
-    }
-
-    if (!/^\d{6}$/.test(otp)) {
-      return res.status(400).json({ error: 'OTP must be 6 digits' });
-    }
-
-    const result = await pool.query(
-      'UPDATE users SET otp = $1 WHERE email = $2 RETURNING id',
-      [otp, email]
-    );
-
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
-
-    console.log('✅ OTP sent to:', email);
-    res.json({ success: true, message: 'OTP sent successfully' });
+    
+    res.json(result.rows[0]);
   } catch (error) {
-    console.error('❌ Send OTP error:', error.message);
+    console.error('❌ Admin user detail error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Health check endpoint
+// Health check
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
-    message: 'Server is running',
     database: process.env.DATABASE_URL ? 'Configured' : 'Not configured',
     timestamp: new Date().toISOString()
   });
 });
 
-// Test database connection endpoint
+// Test database
 app.get('/api/test-db', async (req, res) => {
   try {
     const result = await pool.query('SELECT NOW() as time');
-    res.json({ 
-      success: true, 
-      message: 'Database connection successful',
-      time: result.rows[0].time 
-    });
+    res.json({ success: true, time: result.rows[0].time });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// Error handling middleware
+// Error handling
 app.use((err, req, res, next) => {
   console.error('❌ Unhandled error:', err.stack);
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// 404 handler for API routes
+// 404 handler
 app.use('/api/*', (req, res) => {
   res.status(404).json({ error: 'API endpoint not found' });
 });
 
-// Initialize database and start server
+// Start server
 const PORT = process.env.PORT || 3000;
 
 initializeDatabase().then((success) => {
   if (success) {
     server.listen(PORT, '0.0.0.0', () => {
-      console.log('\n🚀 Server started successfully!');
-      console.log(`📡 Server running on port ${PORT}`);
+      console.log('\n🚀 Server started!');
+      console.log(`📡 Port: ${PORT}`);
       console.log(`🔗 User login: /users/login`);
       console.log(`🔗 Admin login: /admin`);
-      console.log(`🔗 Health check: /api/health`);
-      console.log(`🔗 Test database: /api/test-db`);
-      console.log('\n📢 Socket.io server is ready for real-time notifications\n');
     });
   } else {
-    console.log('\n❌ Server startup failed due to database connection issues');
     process.exit(1);
   }
 });
 
 // Graceful shutdown
 process.on('SIGINT', () => {
-  console.log('\n📴 Shutting down server...');
-  pool.end(() => {
-    console.log('Database pool closed');
-    process.exit(0);
-  });
+  pool.end(() => process.exit(0));
 });
-
 process.on('SIGTERM', () => {
-  console.log('\n📴 Shutting down server...');
-  pool.end(() => {
-    console.log('Database pool closed');
-    process.exit(0);
-  });
+  pool.end(() => process.exit(0));
 });
