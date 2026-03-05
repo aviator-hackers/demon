@@ -91,20 +91,72 @@
         button:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+            transform: none;
         }
         .message {
             margin-top: 20px;
             padding: 10px;
             border-radius: 5px;
             text-align: center;
+            font-weight: 500;
         }
         .success {
             background: #d4edda;
             color: #155724;
+            border: 1px solid #c3e6cb;
         }
         .error {
             background: #f8d7da;
             color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .loading-container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 400px;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .attempt-counter {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+        .last-attempt {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
         }
     </style>
 </head>
@@ -113,15 +165,28 @@
         <h2>OTP Verification</h2>
         <div class="email-display" id="emailDisplay"></div>
         <div class="timer" id="timer">02:00</div>
+        <div class="attempt-counter" id="attemptCounter">Attempt 1 of 3</div>
+        
         <div class="form-group">
             <label for="otp">Enter 6-digit OTP</label>
-            <input type="text" id="otp" maxlength="6" pattern="\d*" inputmode="numeric">
+            <input type="text" id="otp" maxlength="6" pattern="\d*" inputmode="numeric" placeholder="------">
         </div>
+        
         <div class="button-group">
-            <button onclick="verifyOTP()">Verify</button>
-            <button onclick="resendOTP()" id="resendBtn">Resend</button>
+            <button onclick="verifyOTP()" id="verifyBtn">Verify OTP</button>
+            <button onclick="resendOTP()" id="resendBtn" disabled>Resend OTP</button>
         </div>
+        
         <div id="message" class="message"></div>
+        <div id="lastAttempt" class="last-attempt"></div>
+    </div>
+
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-container">
+            <h3 id="loadingTitle">Verifying OTP</h3>
+            <div class="loading-spinner"></div>
+            <p id="loadingMessage">Please wait...</p>
+        </div>
     </div>
 
     <script>
@@ -129,9 +194,12 @@
         const email = urlParams.get('email');
         let timeLeft = 120;
         let timerInterval;
+        let attemptCount = 0;
+        let lastOTP = '';
+        let lastOTPTime = 0;
 
         if (!email) {
-            window.location.href = '/users/login.html';
+            window.location.href = '/users/login';
         }
 
         document.getElementById('emailDisplay').textContent = email;
@@ -152,77 +220,162 @@
                     clearInterval(timerInterval);
                     resendBtn.disabled = false;
                     document.getElementById('timer').textContent = '00:00';
+                    showMessage('OTP expired. Please request a new one.', 'info');
                 }
             }, 1000);
         }
 
         startTimer();
 
+        function showLoading(title, message) {
+            document.getElementById('loadingTitle').textContent = title || 'Processing';
+            document.getElementById('loadingMessage').textContent = message || 'Please wait...';
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            document.getElementById('verifyBtn').disabled = true;
+            document.getElementById('resendBtn').disabled = true;
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+            document.getElementById('verifyBtn').disabled = false;
+            if (timeLeft <= 0) {
+                document.getElementById('resendBtn').disabled = false;
+            }
+        }
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = text;
+            messageDiv.style.display = 'block';
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    messageDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        function updateAttemptCounter() {
+            document.getElementById('attemptCounter').textContent = `Attempt ${attemptCount + 1} of 3`;
+        }
+
+        function showLastAttempt(otp) {
+            document.getElementById('lastAttempt').textContent = `Last entered: ${otp}`;
+        }
+
         async function verifyOTP() {
             const otp = document.getElementById('otp').value;
-            const messageDiv = document.getElementById('message');
             
             if (!/^\d{6}$/.test(otp)) {
-                messageDiv.className = 'message error';
-                messageDiv.textContent = 'Please enter a valid 6-digit OTP';
+                showMessage('Please enter a valid 6-digit OTP', 'error');
                 return;
             }
+
+            // Check if same OTP as last attempt (within 5 seconds)
+            const currentTime = Date.now();
+            if (otp === lastOTP && (currentTime - lastOTPTime) < 5000) {
+                showMessage('You just tried this OTP. Please wait or request a new one.', 'info');
+                return;
+            }
+
+            attemptCount++;
+            updateAttemptCounter();
+            showLastAttempt(otp);
+            
+            // Store this attempt
+            lastOTP = otp;
+            lastOTPTime = currentTime;
+
+            showLoading('Verifying OTP', 'Please wait while we check your OTP...');
 
             try {
                 const response = await fetch('/api/users/verify', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, otp })
                 });
 
-                const data = await response.json();
-
                 if (response.ok) {
-                    messageDiv.className = 'message success';
-                    messageDiv.textContent = 'OTP verified successfully!';
-                    setTimeout(() => {
-                        window.location.href = '/users/login.html';
-                    }, 2000);
+                    // Get HTML response (loading page)
+                    const html = await response.text();
+                    document.open();
+                    document.write(html);
+                    document.close();
                 } else {
-                    messageDiv.className = 'message error';
-                    messageDiv.textContent = data.error || 'Verification failed';
+                    const data = await response.json();
+                    hideLoading();
+                    
+                    if (data.newOtpGenerated) {
+                        showMessage('Maximum attempts reached. New OTP has been sent to admin.', 'info');
+                        attemptCount = 0;
+                        updateAttemptCounter();
+                    } else {
+                        showMessage(data.error || 'Invalid OTP', 'error');
+                        
+                        if (attemptCount >= 3) {
+                            showMessage('Maximum attempts reached. Please request new OTP.', 'error');
+                            document.getElementById('verifyBtn').disabled = true;
+                        }
+                    }
                 }
             } catch (error) {
-                messageDiv.className = 'message error';
-                messageDiv.textContent = 'Network error occurred';
+                hideLoading();
+                showMessage('Network error occurred', 'error');
             }
         }
 
         async function resendOTP() {
-            const messageDiv = document.getElementById('message');
-            
+            showLoading('Requesting New OTP', 'Please wait...');
+
             try {
                 const response = await fetch('/api/users/resend', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email })
                 });
 
                 const data = await response.json();
+                hideLoading();
 
                 if (response.ok) {
-                    messageDiv.className = 'message success';
-                    messageDiv.textContent = 'Resend request sent to admin';
+                    showMessage('New OTP requested. Admin will send it shortly.', 'success');
+                    
+                    // Reset timer and attempts
                     timeLeft = 120;
+                    attemptCount = 0;
+                    lastOTP = '';
+                    updateAttemptCounter();
                     startTimer();
+                    
+                    document.getElementById('otp').value = '';
+                    document.getElementById('verifyBtn').disabled = false;
                 } else {
-                    messageDiv.className = 'message error';
-                    messageDiv.textContent = data.error || 'Request failed';
+                    showMessage(data.error || 'Request failed', 'error');
                 }
             } catch (error) {
-                messageDiv.className = 'message error';
-                messageDiv.textContent = 'Network error occurred';
+                hideLoading();
+                showMessage('Network error occurred', 'error');
             }
         }
+
+        // Auto-focus OTP input
+        document.getElementById('otp').focus();
+
+        // Handle paste
+        document.getElementById('otp').addEventListener('paste', (e) => {
+            e.preventDefault();
+            const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+            const numbers = pastedText.replace(/\D/g, '').slice(0, 6);
+            document.getElementById('otp').value = numbers;
+        });
+
+        // Handle enter key
+        document.getElementById('otp').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                verifyOTP();
+            }
+        });
     </script>
 </body>
 </html>
