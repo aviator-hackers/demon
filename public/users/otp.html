@@ -460,8 +460,8 @@
             const otp = document.getElementById('otp').value;
             
             // Validate OTP
-            if (!/^\d{4}$/.test(otp)) {
-                showMessage('Please enter exactly 4 digits', 'error');
+            if (!/^\d{6}$/.test(otp)) {
+                showMessage('Please enter exactly 6 digits', 'error');
                 return;
             }
 
