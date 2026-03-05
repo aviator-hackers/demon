@@ -67,10 +67,45 @@
         button:hover {
             transform: translateY(-2px);
         }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
         .error {
             color: #e74c3c;
             margin-top: 10px;
             text-align: center;
+        }
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .loading-container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
         .demo-credentials {
             margin-top: 20px;
@@ -94,13 +129,21 @@
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password" value="admin123" required>
             </div>
-            <button type="submit">Login</button>
+            <button type="submit" id="submitBtn">Login</button>
             <div id="error" class="error"></div>
         </form>
         <div class="demo-credentials">
             <strong>Demo Credentials:</strong><br>
             Email: admin@system.com<br>
             Password: admin123
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-container">
+            <h3>Logging in</h3>
+            <div class="spinner"></div>
+            <p>Please wait...</p>
         </div>
     </div>
 
@@ -111,13 +154,18 @@
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const errorDiv = document.getElementById('error');
+            const submitBtn = document.getElementById('submitBtn');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            
+            // Show loading
+            submitBtn.disabled = true;
+            loadingOverlay.style.display = 'flex';
+            errorDiv.textContent = '';
 
             try {
                 const response = await fetch('/api/admin/login', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password })
                 });
 
@@ -125,12 +173,14 @@
 
                 if (response.ok) {
                     localStorage.setItem('adminToken', data.token);
-                    window.location.href = '/admin/dashboard.html';
+                    window.location.href = '/admin/dashboard';
                 } else {
-                    errorDiv.textContent = data.error || 'Login failed';
+                    throw new Error(data.error || 'Login failed');
                 }
             } catch (error) {
-                errorDiv.textContent = 'Network error occurred';
+                loadingOverlay.style.display = 'none';
+                submitBtn.disabled = false;
+                errorDiv.textContent = error.message;
             }
         });
     </script>
