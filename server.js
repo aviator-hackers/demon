@@ -79,18 +79,29 @@ const authenticateJWT = (req, res, next) => {
   });
 };
 
-// Socket.io authentication
+// Socket.io authentication - Allow users without token
 io.use((socket, next) => {
   const token = socket.handshake.auth.token;
-  if (!token) return next(new Error('Authentication error'));
   
+  // If no token, this is a user - allow connection but mark as user
+  if (!token) {
+    socket.isUser = true;
+    console.log('👤 User connected (unauthenticated)');
+    return next();
+  }
+  
+  // If token exists, verify as admin
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) return next(new Error('Authentication error'));
+    if (err) {
+      console.log('❌ Invalid admin token');
+      return next(new Error('Authentication error'));
+    }
     socket.user = user;
+    socket.isAdmin = true;
+    console.log('👑 Admin connected:', user.email);
     next();
   });
 });
-
 // Debug all socket emissions
 const originalEmit = io.emit;
 io.emit = function(event, data) {
@@ -100,14 +111,29 @@ io.emit = function(event, data) {
 
 // Socket.io connection
 io.on('connection', (socket) => {
-  console.log('👤 Admin connected:', socket.id);
+  if (socket.isAdmin) {
+    console.log('👑 Admin connected:', socket.user?.email, socket.id);
+  } else {
+    console.log('👤 User connected:', socket.id);
+    // Store user's email when they identify themselves
+    socket.on('identify', (data) => {
+      socket.userEmail = data.email;
+      console.log('👤 User identified:', data.email);
+    });
+  }
   
   socket.emit('test-notification', { 
     message: 'Connected to real-time server',
     timestamp: new Date()
   });
   
-  socket.on('disconnect', () => console.log('👤 Admin disconnected:', socket.id));
+  socket.on('disconnect', () => {
+    if (socket.isAdmin) {
+      console.log('👑 Admin disconnected:', socket.id);
+    } else {
+      console.log('👤 User disconnected:', socket.id);
+    }
+  });
 });
 
 // Database initialization
