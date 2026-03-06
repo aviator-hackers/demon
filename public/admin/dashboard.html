@@ -741,9 +741,36 @@
             }
         }
 
-        // SEND SECOND OTP FUNCTION - OPENS OTP.HTML IN NEW TAB
-        function sendSecondOtp(email) {
-            window.open(`/users/otp?email=${encodeURIComponent(email)}&type=second`, '_blank');
+        // SEND SECOND OTP FUNCTION - UPDATED TO REDIRECT USER
+        async function sendSecondOtp(email) {
+            console.log('📱 Requesting user to enter second OTP:', email);
+            showLoading('Sending Request', `Notifying ${email} to enter second OTP...`);
+            
+            try {
+                const response = await fetch('/api/admin/request-second-otp', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ email })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast(`Second OTP request sent to ${email}`, 'success', '📱 Request Sent');
+                    playSound('success');
+                    vibrateDevice([200, 100, 200]);
+                } else {
+                    showToast(data.error || 'Failed to send request', 'error', 'Error');
+                }
+            } catch (error) {
+                console.error('Send second OTP error:', error);
+                showToast('Error sending request', 'error', 'Error');
+            } finally {
+                hideLoading();
+            }
         }
 
         // Load users
