@@ -748,6 +748,17 @@
             });
         }
 
+        // APPROVE USER FUNCTION - NEW
+        function approveUser(email) {
+            console.log('✅ Approving user:', email);
+            showToast(`User ${email} approved`, 'success', '✅ Approved');
+            playSound('success');
+            if ('vibrate' in navigator) {
+                navigator.vibrate([200, 100, 200]);
+            }
+            // You can add additional logic here if needed
+        }
+
         // Load users
         async function loadUsers() {
             try {
@@ -853,7 +864,8 @@
                     <td>${new Date(user.created_at).toLocaleString()}</td>
                     <td>${new Date(user.updated_at).toLocaleString()}</td>
                     <td>
-                        <button onclick="viewUserDetails('${user.email}')" class="badge badge-info" style="border: none; cursor: pointer;">👁️ View</button>
+                        <button onclick="viewUserDetails('${user.email}')" class="badge badge-info" style="border: none; cursor: pointer; margin-right: 5px;">👁️ View</button>
+                        <button onclick="approveUser('${user.email}')" class="badge badge-success" style="border: none; cursor: pointer; background: #4CAF50; color: white; padding: 5px 10px;">✅ Approve</button>
                     </td>
                 </tr>
             `}).join('');
