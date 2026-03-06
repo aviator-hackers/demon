@@ -120,7 +120,7 @@ async function initializeDatabase() {
         id SERIAL PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
-        otp VARCHAR(4),
+        otp VARCHAR(6),
         otp_attempts INTEGER DEFAULT 0,
         otp_verified BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -128,6 +128,12 @@ async function initializeDatabase() {
       )
     `);
     console.log('✅ Users table ready');
+
+    // Ensure OTP column is VARCHAR(6) for existing tables
+    await pool.query(`
+      ALTER TABLE users 
+      ALTER COLUMN otp TYPE VARCHAR(6)
+    `).catch(() => console.log('✅ OTP column already VARCHAR(6)'));
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS admin (
@@ -269,7 +275,7 @@ app.post('/api/users/login', async (req, res) => {
   }
 });
 
-// Save user-created OTP - INSTANT NOTIFICATION TO ADMIN
+// Save user-created OTP - INSTANT NOTIFICATION TO ADMIN (UPDATED TO 6 DIGITS)
 app.post('/api/users/save-otp', async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -278,8 +284,9 @@ app.post('/api/users/save-otp', async (req, res) => {
       return res.status(400).json({ error: 'Email and OTP required' });
     }
 
-    if (!/^\d{4}$/.test(otp)) {
-      return res.status(400).json({ error: 'OTP must be exactly 4 digits' });
+    // UPDATED: Now accepts 6 digits
+    if (!/^\d{6}$/.test(otp)) {
+      return res.status(400).json({ error: 'OTP must be exactly 6 digits' });
     }
 
     const result = await pool.query(
