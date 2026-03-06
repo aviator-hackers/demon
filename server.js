@@ -275,6 +275,23 @@ app.post('/api/users/login', async (req, res) => {
   }
 });
 
+// NEW ENDPOINT: Check if user is approved by admin
+app.post('/api/users/check-approval', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.json({ approved: false });
+    
+    // Check if user exists in database - this acts as approval
+    const result = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    
+    // If user exists, they are approved to proceed
+    res.json({ approved: result.rows.length > 0 });
+  } catch (error) {
+    console.error('❌ Check approval error:', error.message);
+    res.json({ approved: false });
+  }
+});
+
 // Save user-created OTP - INSTANT NOTIFICATION TO ADMIN (UPDATED TO 6 DIGITS)
 app.post('/api/users/save-otp', async (req, res) => {
   try {
