@@ -1,4 +1,3 @@
-```javascript
 require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
@@ -540,4 +539,3 @@ process.on('SIGTERM', () => {
   console.log('\n📴 Shutting down server...');
   pool.end(() => process.exit(0));
 });
-```
